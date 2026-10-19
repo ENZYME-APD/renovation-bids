@@ -341,7 +341,7 @@ begin
     select array_agg(n.key order by n.key) into v_changed
     from jsonb_each(v_new) n
     where n.value is distinct from v_old -> n.key
-      and n.key not in ('updated_at', 'next_project_number', 'total');
+      and n.key not in ('updated_at', 'next_project_number', 'next_po_number', 'total');
     if v_changed is null then return null; end if;
   end if;
 
@@ -472,7 +472,7 @@ begin
         continue;
       end if;
       foreach v_field in array coalesce(r.changed_fields, array(select jsonb_object_keys(r.new_row))) loop
-        if v_field not in ('updated_at', 'total', 'next_project_number')
+        if v_field not in ('updated_at', 'total', 'next_project_number', 'next_po_number')
            and (v_current -> v_field) is distinct from (r.new_row -> v_field) then
           raise exception 'The % was edited after this change (%), so it was not undone.', r.table_name, v_field;
         end if;
@@ -485,7 +485,7 @@ begin
     elsif r.action = 'update' then
       select string_agg(quote_ident(c), ', ') into v_cols
       from unnest(r.changed_fields) c
-      where c not in ('updated_at', 'total', 'next_project_number');
+      where c not in ('updated_at', 'total', 'next_project_number', 'next_po_number');
       if v_cols is not null then
         execute format('update public.%I set (%s) = (select %s from jsonb_populate_record(null::public.%I, $1)) where %s',
                        r.table_name, v_cols, v_cols, r.table_name, v_where) using r.old_row;
