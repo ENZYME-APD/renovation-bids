@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireStudio } from "@/lib/dal";
+import { requireWriter } from "@/lib/dal";
 import { toNumber } from "@/lib/format";
 import type { Database } from "@/lib/database.types";
 
@@ -19,7 +19,7 @@ function normalizeState(state: LineState, unitPrice: number | null): LineState {
 }
 
 export async function addLine(projectId: string, versionId: string, _prev: string | null, formData: FormData): Promise<string | null> {
-  const studio = await requireStudio();
+  const studio = await requireWriter();
   const supabase = await createClient();
 
   const partidaId = String(formData.get("partida_id") ?? "");
@@ -58,7 +58,7 @@ export async function addLine(projectId: string, versionId: string, _prev: strin
 }
 
 export async function updateLine(formData: FormData) {
-  await requireStudio();
+  await requireWriter();
   const supabase = await createClient();
   const id = String(formData.get("id"));
   const unitPrice = toNumber(formData.get("unit_price"));
@@ -81,7 +81,7 @@ export async function updateLine(formData: FormData) {
 }
 
 export async function deleteLine(formData: FormData) {
-  await requireStudio();
+  await requireWriter();
   const supabase = await createClient();
   const { error } = await supabase.from("line_items").delete().eq("id", String(formData.get("id")));
   if (error) throw new Error(error.message);
@@ -89,7 +89,7 @@ export async function deleteLine(formData: FormData) {
 }
 
 export async function updateVersionStatus(formData: FormData) {
-  await requireStudio();
+  await requireWriter();
   const supabase = await createClient();
   const { error } = await supabase
     .from("versions")
@@ -100,7 +100,7 @@ export async function updateVersionStatus(formData: FormData) {
 }
 
 export async function addRoom(projectId: string, versionId: string, _prev: string | null, formData: FormData): Promise<string | null> {
-  await requireStudio();
+  await requireWriter();
   const supabase = await createClient();
   const templateId = String(formData.get("template_id") ?? "");
   const size = toNumber(formData.get("size"));

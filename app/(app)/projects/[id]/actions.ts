@@ -2,10 +2,10 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { requireStudio } from "@/lib/dal";
+import { requireWriter } from "@/lib/dal";
 
 export async function createVersion(projectId: string, _prev: string | null, formData: FormData): Promise<string | null> {
-  const studio = await requireStudio();
+  const studio = await requireWriter();
   const supabase = await createClient();
 
   const label = String(formData.get("label") ?? "").trim();
