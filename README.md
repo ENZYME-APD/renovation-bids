@@ -63,3 +63,16 @@ The Supabase project is linked to this repo through Supabase's GitHub integratio
 ## Defaults to review
 
 `regions.settings` for `es`: confidence spreads ±5% / ±12% / ±25%, a reminder after 3 days, a maximum of 2 reminders. These are proposed starting values, not researched figures.
+
+# Catalogue (Spain)
+
+`catalogue/es_catalogue.py` is the single source for Enzyme's standard partida catalogue: 20 chapters mapped to CYPE renovation chapters, 97 all-in partidas with stable codes (`DEM-040`, `REV-010`…), and 10 room templates (quantity = factor × size + fixed).
+
+```
+python3 catalogue/build_xlsx.py   # catalogue/out/Enzyme_catalogo_partidas_ES.xlsx (catalogue + calculator)
+python3 catalogue/build_sql.py    # migration for the shared catalogue + catalogue/out/enzyme_prices.sql
+```
+
+Prices are Enzyme's own (Ortega y Gasset 47, REV 2) and stay private to the studio: run `catalogue/out/enzyme_prices.sql` once after the Enzyme studio exists.
+
+**Bid-stage rule:** a project has one standard version until its status is Won; the database blocks a second version before that.

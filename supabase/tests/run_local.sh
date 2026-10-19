@@ -17,4 +17,5 @@ for f in "$root"/migrations/*.sql; do
   run "$f"
 done
 echo "run tests"
-run "$here/rls_and_flow_test.sql"
+# One session: the catalogue test reuses the studios set up by the first file.
+psql -X -q -v ON_ERROR_STOP=1 -d "$db" -f "$here/rls_and_flow_test.sql" -f "$here/catalogue_test.sql"

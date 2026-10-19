@@ -98,3 +98,23 @@ export async function updateVersionStatus(formData: FormData) {
   if (error) throw new Error(error.message);
   revalidatePath(pathFor(String(formData.get("project_id")), String(formData.get("version_id"))));
 }
+
+export async function addRoom(projectId: string, versionId: string, _prev: string | null, formData: FormData): Promise<string | null> {
+  await requireStudio();
+  const supabase = await createClient();
+  const templateId = String(formData.get("template_id") ?? "");
+  const size = toNumber(formData.get("size"));
+  if (!templateId) return "Choose a room type.";
+  if (size == null || size <= 0) return "Enter the room size.";
+
+  const { data, error } = await supabase.rpc("apply_room_template", {
+    p_version: versionId,
+    p_template: templateId,
+    p_size: size,
+    p_label: String(formData.get("label") ?? "").trim() || undefined,
+  });
+  if (error) return error.message;
+  if (!data) return "Nothing added: the template has no items for that size.";
+  revalidatePath(pathFor(projectId, versionId));
+  return null;
+}
