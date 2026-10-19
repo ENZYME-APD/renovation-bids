@@ -14,6 +14,71 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_log: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          change_id: string
+          changed_fields: string[] | null
+          client_id: string | null
+          id: number
+          new_row: Json | null
+          occurred_at: string
+          old_row: Json | null
+          organization_id: string
+          record_id: string
+          source: string
+          table_name: string
+          undone_at: string | null
+          undone_by: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          change_id: string
+          changed_fields?: string[] | null
+          client_id?: string | null
+          id?: number
+          new_row?: Json | null
+          occurred_at?: string
+          old_row?: Json | null
+          organization_id: string
+          record_id: string
+          source: string
+          table_name: string
+          undone_at?: string | null
+          undone_by?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          change_id?: string
+          changed_fields?: string[] | null
+          client_id?: string | null
+          id?: number
+          new_row?: Json | null
+          occurred_at?: string
+          old_row?: Json | null
+          organization_id?: string
+          record_id?: string
+          source?: string
+          table_name?: string
+          undone_at?: string | null
+          undone_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_log_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           client_type: Database["public"]["Enums"]["client_type"]
@@ -110,13 +175,6 @@ export type Database = {
             foreignKeyName: "decisions_project_id_organization_id_fkey"
             columns: ["project_id", "organization_id"]
             isOneToOne: false
-            referencedRelation: "estimate_accuracy"
-            referencedColumns: ["project_id", "organization_id"]
-          },
-          {
-            foreignKeyName: "decisions_project_id_organization_id_fkey"
-            columns: ["project_id", "organization_id"]
-            isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id", "organization_id"]
           },
@@ -126,6 +184,53 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "versions"
             referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
+      invitations: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string | null
+          organization_id: string
+          role: Database["public"]["Enums"]["member_role"]
+          token: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          invited_by?: string | null
+          organization_id: string
+          role?: Database["public"]["Enums"]["member_role"]
+          token?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string | null
+          organization_id?: string
+          role?: Database["public"]["Enums"]["member_role"]
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invitations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -157,7 +262,7 @@ export type Database = {
           price_id?: string | null
           quantity?: number
           state?: Database["public"]["Enums"]["line_state"]
-          total?: number | null
+          total?: never
           unit_price?: number | null
           updated_at?: string
           version_id: string
@@ -173,7 +278,7 @@ export type Database = {
           price_id?: string | null
           quantity?: number
           state?: Database["public"]["Enums"]["line_state"]
-          total?: number | null
+          total?: never
           unit_price?: number | null
           updated_at?: string
           version_id?: string
@@ -320,13 +425,6 @@ export type Database = {
             foreignKeyName: "offers_project_id_organization_id_fkey"
             columns: ["project_id", "organization_id"]
             isOneToOne: false
-            referencedRelation: "estimate_accuracy"
-            referencedColumns: ["project_id", "organization_id"]
-          },
-          {
-            foreignKeyName: "offers_project_id_organization_id_fkey"
-            columns: ["project_id", "organization_id"]
-            isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id", "organization_id"]
           },
@@ -341,25 +439,49 @@ export type Database = {
       }
       organizations: {
         Row: {
+          ai_changes: string
+          ai_connect: string
           created_at: string
+          currency: string
+          default_contingency_pct: number
+          default_vat_pct: number
           id: string
+          language: string
           name: string
+          next_po_number: number
           next_project_number: number
           region_id: string
+          updated_at: string
         }
         Insert: {
+          ai_changes?: string
+          ai_connect?: string
           created_at?: string
+          currency?: string
+          default_contingency_pct?: number
+          default_vat_pct?: number
           id?: string
+          language?: string
           name: string
+          next_po_number?: number
           next_project_number?: number
           region_id: string
+          updated_at?: string
         }
         Update: {
+          ai_changes?: string
+          ai_connect?: string
           created_at?: string
+          currency?: string
+          default_contingency_pct?: number
+          default_vat_pct?: number
           id?: string
+          language?: string
           name?: string
+          next_po_number?: number
           next_project_number?: number
           region_id?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -438,6 +560,80 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "trades"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount: number
+          category: Database["public"]["Enums"]["money_category"]
+          concept: string | null
+          created_at: string
+          direction: Database["public"]["Enums"]["money_direction"]
+          id: string
+          invoice_id: string | null
+          method: string | null
+          organization_id: string
+          paid_on: string
+          project_id: string
+          supplier_id: string | null
+        }
+        Insert: {
+          amount: number
+          category: Database["public"]["Enums"]["money_category"]
+          concept?: string | null
+          created_at?: string
+          direction: Database["public"]["Enums"]["money_direction"]
+          id?: string
+          invoice_id?: string | null
+          method?: string | null
+          organization_id: string
+          paid_on?: string
+          project_id: string
+          supplier_id?: string | null
+        }
+        Update: {
+          amount?: number
+          category?: Database["public"]["Enums"]["money_category"]
+          concept?: string | null
+          created_at?: string
+          direction?: Database["public"]["Enums"]["money_direction"]
+          id?: string
+          invoice_id?: string | null
+          method?: string | null
+          organization_id?: string
+          paid_on?: string
+          project_id?: string
+          supplier_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_invoice_id_organization_id_fkey"
+            columns: ["invoice_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_invoices"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "payments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_project_id_organization_id_fkey"
+            columns: ["project_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "payments_supplier_id_organization_id_fkey"
+            columns: ["supplier_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id", "organization_id"]
           },
         ]
       }
@@ -520,16 +716,37 @@ export type Database = {
             foreignKeyName: "prices_supplier_id_organization_id_fkey"
             columns: ["supplier_id", "organization_id"]
             isOneToOne: false
-            referencedRelation: "supplier_response"
-            referencedColumns: ["supplier_id", "organization_id"]
-          },
-          {
-            foreignKeyName: "prices_supplier_id_organization_id_fkey"
-            columns: ["supplier_id", "organization_id"]
-            isOneToOne: false
             referencedRelation: "suppliers"
             referencedColumns: ["id", "organization_id"]
           },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          email: string | null
+          language: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          language?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          language?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
         ]
       }
       projects: {
@@ -616,6 +833,150 @@ export type Database = {
           },
         ]
       }
+      purchase_order_lines: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          line_item_id: string | null
+          organization_id: string
+          partida_id: string | null
+          purchase_order_id: string
+          quantity: number
+          received_quantity: number
+          total: number | null
+          unit: Database["public"]["Enums"]["unit"]
+          unit_cost: number
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          line_item_id?: string | null
+          organization_id: string
+          partida_id?: string | null
+          purchase_order_id: string
+          quantity?: number
+          received_quantity?: number
+          total?: never
+          unit?: Database["public"]["Enums"]["unit"]
+          unit_cost?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          line_item_id?: string | null
+          organization_id?: string
+          partida_id?: string | null
+          purchase_order_id?: string
+          quantity?: number
+          received_quantity?: number
+          total?: never
+          unit?: Database["public"]["Enums"]["unit"]
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_order_lines_line_item_id_organization_id_fkey"
+            columns: ["line_item_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "line_items"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "purchase_order_lines_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_order_lines_partida_id_fkey"
+            columns: ["partida_id"]
+            isOneToOne: false
+            referencedRelation: "partidas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_order_lines_purchase_order_id_organization_id_fkey"
+            columns: ["purchase_order_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
+      purchase_orders: {
+        Row: {
+          code: string
+          created_at: string
+          delivered_on: string | null
+          expected_on: string | null
+          id: string
+          notes: string | null
+          ordered_on: string | null
+          organization_id: string
+          project_id: string
+          status: Database["public"]["Enums"]["po_status"]
+          supplied_by: Database["public"]["Enums"]["supply_by"]
+          supplier_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          code?: string
+          created_at?: string
+          delivered_on?: string | null
+          expected_on?: string | null
+          id?: string
+          notes?: string | null
+          ordered_on?: string | null
+          organization_id: string
+          project_id: string
+          status?: Database["public"]["Enums"]["po_status"]
+          supplied_by?: Database["public"]["Enums"]["supply_by"]
+          supplier_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          delivered_on?: string | null
+          expected_on?: string | null
+          id?: string
+          notes?: string | null
+          ordered_on?: string | null
+          organization_id?: string
+          project_id?: string
+          status?: Database["public"]["Enums"]["po_status"]
+          supplied_by?: Database["public"]["Enums"]["supply_by"]
+          supplier_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_orders_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_project_id_organization_id_fkey"
+            columns: ["project_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_supplier_id_organization_id_fkey"
+            columns: ["supplier_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
       quotes: {
         Row: {
           attachment_path: string | null
@@ -674,13 +1035,6 @@ export type Database = {
             referencedRelation: "rfqs"
             referencedColumns: ["id", "organization_id"]
           },
-          {
-            foreignKeyName: "quotes_rfq_id_organization_id_fkey"
-            columns: ["rfq_id", "organization_id"]
-            isOneToOne: false
-            referencedRelation: "rfqs_due_reminder"
-            referencedColumns: ["id", "organization_id"]
-          },
         ]
       }
       regions: {
@@ -705,7 +1059,8 @@ export type Database = {
           name?: string
           settings?: Json
         }
-        Relationships: []
+        Relationships: [
+        ]
       }
       rfq_line_items: {
         Row: {
@@ -732,13 +1087,6 @@ export type Database = {
             referencedColumns: ["id", "organization_id"]
           },
           {
-            foreignKeyName: "rfq_line_items_line_item_id_organization_id_fkey"
-            columns: ["line_item_id", "organization_id"]
-            isOneToOne: false
-            referencedRelation: "lines_needing_price"
-            referencedColumns: ["id", "organization_id"]
-          },
-          {
             foreignKeyName: "rfq_line_items_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
@@ -750,13 +1098,6 @@ export type Database = {
             columns: ["rfq_id", "organization_id"]
             isOneToOne: false
             referencedRelation: "rfqs"
-            referencedColumns: ["id", "organization_id"]
-          },
-          {
-            foreignKeyName: "rfq_line_items_rfq_id_organization_id_fkey"
-            columns: ["rfq_id", "organization_id"]
-            isOneToOne: false
-            referencedRelation: "rfqs_due_reminder"
             referencedColumns: ["id", "organization_id"]
           },
         ]
@@ -828,22 +1169,8 @@ export type Database = {
             foreignKeyName: "rfqs_project_id_organization_id_fkey"
             columns: ["project_id", "organization_id"]
             isOneToOne: false
-            referencedRelation: "estimate_accuracy"
-            referencedColumns: ["project_id", "organization_id"]
-          },
-          {
-            foreignKeyName: "rfqs_project_id_organization_id_fkey"
-            columns: ["project_id", "organization_id"]
-            isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id", "organization_id"]
-          },
-          {
-            foreignKeyName: "rfqs_supplier_id_organization_id_fkey"
-            columns: ["supplier_id", "organization_id"]
-            isOneToOne: false
-            referencedRelation: "supplier_response"
-            referencedColumns: ["supplier_id", "organization_id"]
           },
           {
             foreignKeyName: "rfqs_supplier_id_organization_id_fkey"
@@ -943,7 +1270,22 @@ export type Database = {
           sequence?: number
           size_label?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "room_templates_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_templates_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       site_visits: {
         Row: {
@@ -997,14 +1339,90 @@ export type Database = {
             foreignKeyName: "site_visits_project_id_organization_id_fkey"
             columns: ["project_id", "organization_id"]
             isOneToOne: false
-            referencedRelation: "estimate_accuracy"
-            referencedColumns: ["project_id", "organization_id"]
+            referencedRelation: "projects"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
+      supplier_invoices: {
+        Row: {
+          attachment_path: string | null
+          category: Database["public"]["Enums"]["money_category"]
+          created_at: string
+          due_on: string | null
+          id: string
+          issued_on: string
+          net_amount: number
+          notes: string | null
+          number: string | null
+          organization_id: string
+          project_id: string
+          purchase_order_id: string | null
+          supplier_id: string | null
+          total: number | null
+          vat_amount: number
+        }
+        Insert: {
+          attachment_path?: string | null
+          category?: Database["public"]["Enums"]["money_category"]
+          created_at?: string
+          due_on?: string | null
+          id?: string
+          issued_on?: string
+          net_amount: number
+          notes?: string | null
+          number?: string | null
+          organization_id: string
+          project_id: string
+          purchase_order_id?: string | null
+          supplier_id?: string | null
+          total?: never
+          vat_amount?: number
+        }
+        Update: {
+          attachment_path?: string | null
+          category?: Database["public"]["Enums"]["money_category"]
+          created_at?: string
+          due_on?: string | null
+          id?: string
+          issued_on?: string
+          net_amount?: number
+          notes?: string | null
+          number?: string | null
+          organization_id?: string
+          project_id?: string
+          purchase_order_id?: string | null
+          supplier_id?: string | null
+          total?: never
+          vat_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_invoices_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "site_visits_project_id_organization_id_fkey"
+            foreignKeyName: "supplier_invoices_project_id_organization_id_fkey"
             columns: ["project_id", "organization_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "supplier_invoices_purchase_order_id_organization_id_fkey"
+            columns: ["purchase_order_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "supplier_invoices_supplier_id_organization_id_fkey"
+            columns: ["supplier_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id", "organization_id"]
           },
         ]
@@ -1032,13 +1450,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "supplier_trades_supplier_id_organization_id_fkey"
-            columns: ["supplier_id", "organization_id"]
-            isOneToOne: false
-            referencedRelation: "supplier_response"
-            referencedColumns: ["supplier_id", "organization_id"]
           },
           {
             foreignKeyName: "supplier_trades_supplier_id_organization_id_fkey"
@@ -1209,13 +1620,6 @@ export type Database = {
             foreignKeyName: "versions_project_id_organization_id_fkey"
             columns: ["project_id", "organization_id"]
             isOneToOne: false
-            referencedRelation: "estimate_accuracy"
-            referencedColumns: ["project_id", "organization_id"]
-          },
-          {
-            foreignKeyName: "versions_project_id_organization_id_fkey"
-            columns: ["project_id", "organization_id"]
-            isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id", "organization_id"]
           },
@@ -1223,6 +1627,20 @@ export type Database = {
       }
     }
     Views: {
+      action_items: {
+        Row: {
+          due_on: string | null
+          kind: string | null
+          organization_id: string | null
+          priority: number | null
+          project_code: string | null
+          project_id: string | null
+          project_name: string | null
+          ref_id: string | null
+          title: string | null
+        }
+        Relationships: []
+      }
       estimate_accuracy: {
         Row: {
           actual_cost: number | null
@@ -1235,15 +1653,30 @@ export type Database = {
           project_id: string | null
           within_range: boolean | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "projects_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
+      }
+      invoice_balances: {
+        Row: {
+          attachment_path: string | null
+          category: Database["public"]["Enums"]["money_category"] | null
+          created_at: string | null
+          due_on: string | null
+          id: string | null
+          issued_on: string | null
+          net_amount: number | null
+          notes: string | null
+          number: string | null
+          organization_id: string | null
+          outstanding: number | null
+          paid: number | null
+          project_id: string | null
+          purchase_order_id: string | null
+          supplier: string | null
+          supplier_id: string | null
+          total: number | null
+          vat_amount: number | null
+        }
+        Relationships: []
       }
       lines_needing_price: {
         Row: {
@@ -1258,29 +1691,77 @@ export type Database = {
           unit: Database["public"]["Enums"]["unit"] | null
           version_id: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "line_items_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "line_items_version_id_organization_id_fkey"
-            columns: ["version_id", "organization_id"]
-            isOneToOne: false
-            referencedRelation: "versions"
-            referencedColumns: ["id", "organization_id"]
-          },
-          {
-            foreignKeyName: "partidas_trade_id_fkey"
-            columns: ["trade_id"]
-            isOneToOne: false
-            referencedRelation: "trades"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
+      }
+      project_cost_by_trade: {
+        Row: {
+          budget: number | null
+          committed: number | null
+          organization_id: string | null
+          project_id: string | null
+          remaining: number | null
+          sequence: number | null
+          trade: string | null
+          trade_code: string | null
+          trade_id: string | null
+        }
+        Relationships: []
+      }
+      project_main_version: {
+        Row: {
+          label: string | null
+          organization_id: string | null
+          project_id: string | null
+          status: Database["public"]["Enums"]["version_status"] | null
+          version_id: string | null
+        }
+        Relationships: []
+      }
+      project_money: {
+        Row: {
+          budget: number | null
+          code: string | null
+          committed: number | null
+          contract_value: number | null
+          invoiced: number | null
+          name: string | null
+          organization_id: string | null
+          paid_extra: number | null
+          paid_labour: number | null
+          paid_materials: number | null
+          paid_out: number | null
+          project_id: string | null
+          received_fees: number | null
+          received_works: number | null
+          status: Database["public"]["Enums"]["project_status"] | null
+        }
+        Relationships: []
+      }
+      project_stats: {
+        Row: {
+          actual_cost: number | null
+          area_m2: number | null
+          bid_hours: number | null
+          budget_high: number | null
+          budget_low: number | null
+          client_budget: number | null
+          code: string | null
+          contract_value: number | null
+          created_at: string | null
+          district: string | null
+          eur_per_m2: number | null
+          lines: number | null
+          name: string | null
+          organization_id: string | null
+          priced_lines: number | null
+          project_id: string | null
+          status: Database["public"]["Enums"]["project_status"] | null
+          subtotal: number | null
+          updated_at: string | null
+          version_id: string | null
+          version_label: string | null
+        }
+        Relationships: []
       }
       rfqs_due_reminder: {
         Row: {
@@ -1297,43 +1778,7 @@ export type Database = {
           supplier: string | null
           supplier_id: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "rfqs_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "rfqs_project_id_organization_id_fkey"
-            columns: ["project_id", "organization_id"]
-            isOneToOne: false
-            referencedRelation: "estimate_accuracy"
-            referencedColumns: ["project_id", "organization_id"]
-          },
-          {
-            foreignKeyName: "rfqs_project_id_organization_id_fkey"
-            columns: ["project_id", "organization_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id", "organization_id"]
-          },
-          {
-            foreignKeyName: "rfqs_supplier_id_organization_id_fkey"
-            columns: ["supplier_id", "organization_id"]
-            isOneToOne: false
-            referencedRelation: "supplier_response"
-            referencedColumns: ["supplier_id", "organization_id"]
-          },
-          {
-            foreignKeyName: "rfqs_supplier_id_organization_id_fkey"
-            columns: ["supplier_id", "organization_id"]
-            isOneToOne: false
-            referencedRelation: "suppliers"
-            referencedColumns: ["id", "organization_id"]
-          },
-        ]
+        Relationships: []
       }
       supplier_response: {
         Row: {
@@ -1345,18 +1790,26 @@ export type Database = {
           response_rate: number | null
           supplier_id: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "suppliers_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
+      }
+      version_totals: {
+        Row: {
+          budget_high: number | null
+          budget_low: number | null
+          lines: number | null
+          organization_id: string | null
+          priced_lines: number | null
+          subtotal: number | null
+          version_id: string | null
+        }
+        Relationships: []
       }
     }
     Functions: {
+      accept_invitation: {
+        Args: { p_token: string }
+        Returns: string
+      }
       apply_room_template: {
         Args: { p_label?: string; p_size: number; p_template: string; p_version: string }
         Returns: number
@@ -1379,6 +1832,24 @@ export type Database = {
           valid_until: string
         }[]
       }
+      get_invitation: {
+        Args: { p_token: string }
+        Returns: {
+          accepted: boolean
+          email: string
+          expired: boolean
+          role: Database["public"]["Enums"]["member_role"]
+          studio: string
+        }[]
+      }
+      record_actual_price: {
+        Args: { p_po_line: string }
+        Returns: string
+      }
+      undo_change: {
+        Args: { p_change_id: string }
+        Returns: number
+      }
       version_budget: {
         Args: { p_version: string }
         Returns: {
@@ -1400,33 +1871,16 @@ export type Database = {
       decision_source: "email" | "meeting" | "call" | "site" | "other"
       decision_status: "open" | "applied" | "dropped"
       line_state: "unpriced" | "priced" | "needs_rfq" | "quoted"
-      member_role: "owner" | "admin" | "member"
+      member_role: "owner" | "admin" | "member" | "viewer"
+      money_category: "labour" | "materials" | "extra" | "client_works" | "client_fees"
+      money_direction: "out" | "in"
       offer_status: "draft" | "sent" | "accepted" | "rejected" | "superseded"
+      po_status: "draft" | "sent" | "confirmed" | "delivered" | "cancelled"
       price_source: "history" | "reference" | "quote" | "manual"
-      project_status:
-        | "lead"
-        | "qualifying"
-        | "no_go"
-        | "site_visit"
-        | "design"
-        | "pricing"
-        | "offer_sent"
-        | "won"
-        | "lost"
-        | "on_hold"
-      rfq_status:
-        | "draft"
-        | "approved"
-        | "sent"
-        | "reminded"
-        | "replied"
-        | "expired"
-        | "cancelled"
-      supplier_type:
-        | "subcontractor"
-        | "manufacturer"
-        | "distributor"
-        | "professional"
+      project_status: "lead" | "qualifying" | "no_go" | "site_visit" | "design" | "pricing" | "offer_sent" | "won" | "lost" | "on_hold"
+      rfq_status: "draft" | "approved" | "sent" | "reminded" | "replied" | "expired" | "cancelled"
+      supplier_type: "subcontractor" | "manufacturer" | "distributor" | "professional"
+      supply_by: "enzyme" | "contractor" | "owner"
       unit: "m2" | "m" | "m3" | "ud" | "kg" | "h" | "pa"
       version_status: "draft" | "presented" | "selected" | "rejected"
     }
@@ -1562,36 +2016,16 @@ export const Constants = {
       decision_source: ["email", "meeting", "call", "site", "other"],
       decision_status: ["open", "applied", "dropped"],
       line_state: ["unpriced", "priced", "needs_rfq", "quoted"],
-      member_role: ["owner", "admin", "member"],
+      member_role: ["owner", "admin", "member", "viewer"],
+      money_category: ["labour", "materials", "extra", "client_works", "client_fees"],
+      money_direction: ["out", "in"],
       offer_status: ["draft", "sent", "accepted", "rejected", "superseded"],
+      po_status: ["draft", "sent", "confirmed", "delivered", "cancelled"],
       price_source: ["history", "reference", "quote", "manual"],
-      project_status: [
-        "lead",
-        "qualifying",
-        "no_go",
-        "site_visit",
-        "design",
-        "pricing",
-        "offer_sent",
-        "won",
-        "lost",
-        "on_hold",
-      ],
-      rfq_status: [
-        "draft",
-        "approved",
-        "sent",
-        "reminded",
-        "replied",
-        "expired",
-        "cancelled",
-      ],
-      supplier_type: [
-        "subcontractor",
-        "manufacturer",
-        "distributor",
-        "professional",
-      ],
+      project_status: ["lead", "qualifying", "no_go", "site_visit", "design", "pricing", "offer_sent", "won", "lost", "on_hold"],
+      rfq_status: ["draft", "approved", "sent", "reminded", "replied", "expired", "cancelled"],
+      supplier_type: ["subcontractor", "manufacturer", "distributor", "professional"],
+      supply_by: ["enzyme", "contractor", "owner"],
       unit: ["m2", "m", "m3", "ud", "kg", "h", "pa"],
       version_status: ["draft", "presented", "selected", "rejected"],
     },
