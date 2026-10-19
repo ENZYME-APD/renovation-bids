@@ -1,6 +1,31 @@
-# Renovation Bids — database
+# Renovation Bids
 
-Supabase (Postgres) schema for the renovation-bid product. Multi-tenant from day one: Enzyme is the first organization.
+From site visit to a priced offer. Multi-tenant from day one: Enzyme is the first organization.
+
+- **App:** Next.js 16 (App Router) in this folder, deployed on Vercel.
+- **Database:** Supabase (Postgres) in `supabase/`, deployed through Supabase's GitHub integration.
+
+## App
+
+| Route | What it does |
+|---|---|
+| `/login` | Email sign-in link (no password) |
+| `/onboarding` | Create your studio; you become its owner |
+| `/projects` | Project list and new project |
+| `/projects/[id]` | Project facts, status, versions with budget ranges, new version (empty or copied) |
+| `/projects/[id]/versions/[versionId]` | Budget editor: lines by trade, quantities, prices, confidence, low–high range per trade |
+
+Local development:
+
+```
+cp .env.example .env.local   # fill in the Supabase URL and publishable key
+npm install
+npm run dev
+```
+
+All data access goes through the signed-in user's session, so the database's row-level security decides what each user sees. No service key is used by the app.
+
+# Database
 
 ## What's here
 
