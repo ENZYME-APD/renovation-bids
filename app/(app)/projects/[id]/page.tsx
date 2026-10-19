@@ -102,9 +102,15 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
             );
           })}
         </div>
-        <div className="card p-5">
-          <NewVersionForm projectId={id} versions={versions.map((v) => ({ id: v.id, label: v.label }))} />
-        </div>
+        {project.status === "won" || versions.length === 0 ? (
+          <div className="card p-5">
+            <NewVersionForm projectId={id} versions={versions.map((v) => ({ id: v.id, label: v.label }))} />
+          </div>
+        ) : (
+          <p className="text-sm text-muted">
+            Bid stage: one standard version, no options or client changes. Alternatives open once the project is marked Won.
+          </p>
+        )}
       </section>
     </div>
   );

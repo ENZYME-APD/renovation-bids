@@ -6,6 +6,7 @@ import { humanize, money, money2, unitLabel } from "@/lib/format";
 import { Constants } from "@/lib/database.types";
 import { deleteLine, updateLine, updateVersionStatus } from "./actions";
 import { AddLineForm } from "./add-line-form";
+import { AddRoomForm } from "./add-room-form";
 
 export default async function VersionPage({ params }: PageProps<"/projects/[id]/versions/[versionId]">) {
   const { id: projectId, versionId } = await params;
@@ -18,19 +19,24 @@ export default async function VersionPage({ params }: PageProps<"/projects/[id]/
   ]);
   if (!version || !project || version.project_id !== project.id) notFound();
 
-  const [budgetRes, linesRes, partidasRes, pricesRes] = await Promise.all([
+  const [budgetRes, linesRes, partidasRes, pricesRes, templatesRes] = await Promise.all([
     supabase.rpc("version_budget", { p_version: versionId }),
     supabase
       .from("line_items")
-      .select("id, quantity, unit_price, confidence, state, total, updated_at, partidas(id, code, short_description, unit, trades(id, name, sequence))")
+      .select("id, quantity, unit_price, confidence, state, total, notes, updated_at, partidas(id, code, short_description, unit, trades(id, code, name, sequence))")
       .eq("version_id", versionId)
       .order("created_at", { ascending: true }),
     supabase
       .from("partidas")
-      .select("id, code, short_description, unit, trades(name, sequence)")
+      .select("id, code, short_description, unit, trades(code, name, sequence)")
       .eq("active", true)
       .order("code"),
     supabase.rpc("current_prices", { p_org: studio.id }),
+    supabase
+      .from("room_templates")
+      .select("id, code, name, size_label, description")
+      .eq("active", true)
+      .order("sequence"),
   ]);
   if (linesRes.error) throw linesRes.error;
   if (partidasRes.error) throw partidasRes.error;
@@ -49,7 +55,7 @@ export default async function VersionPage({ params }: PageProps<"/projects/[id]/
   for (const l of lines) {
     const t = l.partidas?.trades;
     const key = t?.id ?? "none";
-    if (!groups.has(key)) groups.set(key, { name: t?.name ?? "Other", sequence: t?.sequence ?? 999, lines: [] });
+    if (!groups.has(key)) groups.set(key, { name: t ? (t.code ? `${t.code} · ${t.name}` : t.name) : "Other", sequence: t?.sequence ?? 999, lines: [] });
     groups.get(key)!.lines.push(l);
   }
   const lineGroups = [...groups.values()].sort((a, b) => a.sequence - b.sequence);
@@ -57,7 +63,7 @@ export default async function VersionPage({ params }: PageProps<"/projects/[id]/
   // Partida picker, grouped by trade.
   const picker = new Map<string, { trade: string; sequence: number; partidas: { id: string; code: string; description: string; unit: string; price: number | null }[] }>();
   for (const p of partidasRes.data) {
-    const trade = p.trades?.name ?? "Other";
+    const trade = p.trades ? (p.trades.code ? `${p.trades.code} · ${p.trades.name}` : p.trades.name) : "Other";
     if (!picker.has(trade)) picker.set(trade, { trade, sequence: p.trades?.sequence ?? 999, partidas: [] });
     picker.get(trade)!.partidas.push({
       id: p.id, code: p.code, description: p.short_description, unit: unitLabel[p.unit] ?? p.unit, price: priceByPartida.get(p.id) ?? null,
@@ -172,6 +178,7 @@ export default async function VersionPage({ params }: PageProps<"/projects/[id]/
                       <td className="px-4 py-2">
                         <span className="font-mono text-xs text-muted">{l.partidas?.code}</span>
                         <div>{l.partidas?.short_description}</div>
+                        {l.notes && <div className="text-xs text-muted">{l.notes}</div>}
                         {l.unit_price == null && suggested != null && (
                           <div className="text-xs text-ok">Current price: {money2(suggested)}</div>
                         )}
@@ -219,6 +226,14 @@ export default async function VersionPage({ params }: PageProps<"/projects/[id]/
             </table>
           </div>
         ))}
+
+        <div className="card p-5">
+          <h3 className="text-sm font-semibold">Add a room</h3>
+          <p className="mb-4 mt-1 text-xs text-muted">
+            Fills in the standard items for that room type, sized by its area. Layout and design items (partitions, wardrobes, heating, air conditioning) are added as single lines.
+          </p>
+          <AddRoomForm projectId={projectId} versionId={versionId} templates={templatesRes.data ?? []} />
+        </div>
 
         <div className="card p-5">
           <h3 className="mb-4 text-sm font-semibold">Add a line</h3>

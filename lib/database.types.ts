@@ -861,6 +861,90 @@ export type Database = {
           },
         ]
       }
+      room_template_lines: {
+        Row: {
+          factor: number
+          fixed: number
+          id: string
+          note: string | null
+          partida_id: string
+          sequence: number
+          template_id: string
+        }
+        Insert: {
+          factor?: number
+          fixed?: number
+          id?: string
+          note?: string | null
+          partida_id: string
+          sequence?: number
+          template_id: string
+        }
+        Update: {
+          factor?: number
+          fixed?: number
+          id?: string
+          note?: string | null
+          partida_id?: string
+          sequence?: number
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_template_lines_partida_id_fkey"
+            columns: ["partida_id"]
+            isOneToOne: false
+            referencedRelation: "partidas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_template_lines_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "room_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      room_templates: {
+        Row: {
+          active: boolean
+          code: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          organization_id: string | null
+          region_id: string
+          sequence: number
+          size_label: string
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          organization_id?: string | null
+          region_id: string
+          sequence?: number
+          size_label?: string
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          organization_id?: string | null
+          region_id?: string
+          sequence?: number
+          size_label?: string
+        }
+        Relationships: []
+      }
       site_visits: {
         Row: {
           attendees: string[]
@@ -1033,6 +1117,9 @@ export type Database = {
       }
       trades: {
         Row: {
+          active: boolean
+          code: string | null
+          cype_chapter: string | null
           id: string
           name: string
           organization_id: string | null
@@ -1040,6 +1127,9 @@ export type Database = {
           sequence: number
         }
         Insert: {
+          active?: boolean
+          code?: string | null
+          cype_chapter?: string | null
           id?: string
           name: string
           organization_id?: string | null
@@ -1047,6 +1137,9 @@ export type Database = {
           sequence?: number
         }
         Update: {
+          active?: boolean
+          code?: string | null
+          cype_chapter?: string | null
           id?: string
           name?: string
           organization_id?: string | null
@@ -1264,6 +1357,10 @@ export type Database = {
       }
     }
     Functions: {
+      apply_room_template: {
+        Args: { p_label?: string; p_size: number; p_template: string; p_version: string }
+        Returns: number
+      }
       create_organization: {
         Args: { p_name: string; p_region_id: string }
         Returns: string
