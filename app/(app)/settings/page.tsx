@@ -6,7 +6,7 @@ import { dateTime } from "@/lib/format";
 import { describe, groupChanges, sourceLabel, type ActivityRow } from "@/lib/activity";
 import { CopyBox } from "@/components/copy-box";
 import { AiRulesForm, InviteForm, ProfileForm, StudioForm, UndoButton } from "./forms";
-import { changeRole, removeMember, revokeInvitation } from "./actions";
+import { changeRole, removeMember, revokeAppAccess, revokeInvitation } from "./actions";
 
 const TABS = [
   ["profile", "Profile"],
@@ -183,6 +183,8 @@ async function AiTab({ studio }: { studio: Awaited<ReturnType<typeof requireStud
     .limit(100);
   const changes = groupChanges((data ?? []) as ActivityRow[]).slice(0, 15);
   const base = await siteUrl();
+  // Apps this user approved. Fails quietly until the OAuth server is enabled in Supabase.
+  const { data: grants } = await supabase.auth.oauth.listGrants().catch(() => ({ data: null }));
   const connectOk =
     studio.aiConnect === "everyone" ||
     (studio.aiConnect === "members" && studio.role !== "viewer") ||
@@ -200,6 +202,24 @@ async function AiTab({ studio }: { studio: Awaited<ReturnType<typeof requireStud
         <p className="text-sm">
           {connectOk ? "You can connect an assistant." : "Your studio's rules don't let your role connect an assistant."}
         </p>
+      </section>
+      <section className="card">
+        <h2 className="mb-3 font-semibold">Your connected apps</h2>
+        {grants?.length ? (
+          <ul className="divide-y divide-line">
+            {grants.map((g) => (
+              <li key={g.client.id} className="flex items-center justify-between py-2 text-sm">
+                <span>{g.client.name || g.client.id} <span className="text-muted">· since {dateTime(g.granted_at)}</span></span>
+                <form action={revokeAppAccess}>
+                  <input type="hidden" name="client_id" value={g.client.id} />
+                  <button className="btn-quiet">Disconnect</button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-muted">None yet.</p>
+        )}
       </section>
       <section className="card space-y-4">
         <h2 className="font-semibold">Rules</h2>

@@ -109,3 +109,11 @@ export async function undoChange(_p: FormState, fd: FormData): Promise<FormState
   revalidatePath("/dashboard");
   return { ok: `Undone (${data} ${data === 1 ? "row" : "rows"}).` };
 }
+
+/** Disconnect an AI app the user approved (revokes its tokens). */
+export async function revokeAppAccess(fd: FormData) {
+  const supabase = await createClient();
+  const { error } = await supabase.auth.oauth.revokeGrant({ clientId: String(fd.get("client_id")) });
+  if (error) throw new Error(error.message);
+  revalidatePath("/settings");
+}
