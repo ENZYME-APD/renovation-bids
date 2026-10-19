@@ -6,12 +6,12 @@ Supabase (Postgres) schema for the renovation-bid product. Multi-tenant from day
 
 | File | Contents |
 |---|---|
-| `supabase/migrations/…01_platform.sql` | Regions, organizations, members, tenancy helpers, `create_organization()` sign-up function |
-| `…02_domain.sql` | 16 business tables + 2 link tables, composite foreign keys, scope triggers |
-| `…03_rls.sql` | Row-level security: own rows + shared regional catalogue (read-only) |
-| `…04_queries.sql` | `current_prices()`, `version_budget()`, views for reminders, supplier response, estimate accuracy, lines needing a price |
-| `…05_cron.sql` | Daily pg_cron job that expires unanswered supplier requests |
-| `supabase/seed.sql` | Spain region settings, 15 trades, 15 starter partidas (placeholder codes, no prices) |
+| `supabase/migrations/…_platform.sql` | Regions, organizations, members, tenancy helpers, `create_organization()` sign-up function |
+| `…_domain.sql` | 16 business tables + 2 link tables, composite foreign keys, scope triggers |
+| `…_rls.sql` | Row-level security: own rows + shared regional catalogue (read-only) |
+| `…_queries.sql` | `current_prices()`, `version_budget()`, views for reminders, supplier response, estimate accuracy, lines needing a price |
+| `…_cron.sql` | Daily pg_cron job that expires unanswered supplier requests |
+| `…_seed_spain.sql` | Spain region settings, 15 trades, 15 starter partidas (placeholder codes, no prices) |
 | `supabase/tests/` | Local test runner + 36 checks: tenant isolation and the core bid flow |
 
 ## Rules the database enforces
@@ -31,12 +31,9 @@ Needs Postgres 16. `00_local_supabase_stub.sql` fakes the Supabase auth pieces, 
 PGHOST=... PGUSER=... supabase/tests/run_local.sh
 ```
 
-## Deploy to Supabase
+## Deploy
 
-1. Create a Supabase project in an EU region, e.g. Frankfurt.
-2. Enable the `pg_cron` extension.
-3. Run `supabase link` and `supabase db push`, then run `seed.sql`.
-4. Create storage buckets for scans, photos and offers. Not yet in the migrations.
+The Supabase project is linked to this repo through Supabase's GitHub integration: migrations in `supabase/migrations` deploy when merged to `main`. New migrations need a timestamp later than the last one. Storage buckets (scans, photos, offers) are not in the migrations yet.
 
 ## Defaults to review
 

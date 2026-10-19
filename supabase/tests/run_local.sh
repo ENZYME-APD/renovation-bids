@@ -16,7 +16,5 @@ for f in "$root"/migrations/*.sql; do
   echo "apply $(basename "$f")"
   run "$f"
 done
-echo "apply seed.sql"
-run "$root/seed.sql"
 echo "run tests"
 run "$here/rls_and_flow_test.sql"
