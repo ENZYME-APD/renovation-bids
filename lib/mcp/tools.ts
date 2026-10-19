@@ -568,14 +568,14 @@ const WRITE: ToolDef[] = [
     inputSchema: schema({ purchase_order: P("PO code (PO-0001) or id"), status: P("Status", "string", { enum: ["draft", "sent", "confirmed", "delivered", "cancelled"] }), ordered_on: P("YYYY-MM-DD"), expected_on: P("YYYY-MM-DD"), delivered_on: P("YYYY-MM-DD") }, ["purchase_order"]),
     run: async (a, ctx) => {
       const ref = str(a, "purchase_order", true);
-      const q = ctx.db.from("purchase_orders").select("id, code");
+      const q = ctx.db.from("purchase_orders").select("id, code, ordered_on");
       const po = check(UUID.test(ref) ? await q.eq("id", ref) : await q.ilike("code", ref))[0];
       if (!po) throw new ToolError(`No purchase order "${ref}".`);
       const patch: Database["public"]["Tables"]["purchase_orders"]["Update"] = {};
       const status = oneOf(a, "status", ["draft", "sent", "confirmed", "delivered", "cancelled"] as const);
       if (status) patch.status = status;
       for (const k of ["ordered_on", "expected_on", "delivered_on"] as const) if (date(a, k)) patch[k] = date(a, k);
-      if (status === "sent" && !patch.ordered_on) patch.ordered_on = today();
+      if (status && !["draft", "cancelled"].includes(status) && !patch.ordered_on && !po.ordered_on) patch.ordered_on = today();
       if (status === "delivered" && !patch.delivered_on) patch.delivered_on = today();
       if (!Object.keys(patch).length) throw new ToolError("Nothing to change.");
       const { db, changeId } = ctx.change();
