@@ -2,10 +2,11 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/dal";
 import { humanize, money } from "@/lib/format";
-import { NewProjectForm } from "./new-project-form";
+import { NewProjectButton } from "./new-project-form";
 
-export default async function ProjectsPage() {
+export default async function ProjectsPage({ searchParams }: PageProps<"/projects">) {
   const studio = await requireStudio();
+  const openNew = (await searchParams).new === "1";
   const supabase = await createClient();
   const { data: projects, error } = await supabase
     .from("projects")
@@ -16,13 +17,16 @@ export default async function ProjectsPage() {
 
   return (
     <div className="space-y-10">
-      <div>
-        <p className="eyebrow">{studio.name}</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight">Projects</h1>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="eyebrow">{studio.name}</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight">Projects</h1>
+        </div>
+        {studio.canWrite && <NewProjectButton initialOpen={openNew} />}
       </div>
 
       {projects.length === 0 ? (
-        <p className="text-sm text-muted">No projects yet. Create the first one below.</p>
+        <p className="text-sm text-muted">No projects yet. Use + New project to create the first one.</p>
       ) : (
         <div className="card overflow-x-auto">
           <table className="w-full text-sm">
@@ -53,11 +57,6 @@ export default async function ProjectsPage() {
           </table>
         </div>
       )}
-
-      <section className="card p-6">
-        <h2 className="mb-4 text-lg font-semibold tracking-tight">New project</h2>
-        <NewProjectForm />
-      </section>
     </div>
   );
 }
