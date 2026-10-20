@@ -46,6 +46,7 @@ export async function addLine(projectId: string, versionId: string, _prev: strin
     organization_id: studio.id,
     version_id: versionId,
     partida_id: partidaId,
+    room: String(formData.get("room") ?? "").trim() || null,
     quantity,
     unit_price: unitPrice,
     price_id: priceId,
@@ -117,4 +118,86 @@ export async function addRoom(projectId: string, versionId: string, _prev: strin
   if (!data) return "Nothing added: the template has no items for that size.";
   revalidatePath(pathFor(projectId, versionId));
   return null;
+}
+
+// ── Batch editing ────────────────────────────────────────────────────────────
+// One request = one change in the activity log, so a whole batch undoes in one step.
+
+export type BatchState = { ok?: string; error?: string; changeId?: string } | null;
+
+export type BatchPatch = {
+  state?: LineState;
+  confidence?: Confidence | "";
+  room?: string; // "" clears the room
+  unitPrice?: number | null;
+  quantityFactor?: number;
+};
+
+export async function batchUpdateLines(projectId: string, versionId: string, ids: string[], patch: BatchPatch): Promise<BatchState> {
+  try {
+    await requireWriter();
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+  if (!ids.length) return { error: "Select at least one line." };
+  const changeId = `app:${crypto.randomUUID()}`;
+  const supabase = await createClient(changeId);
+
+  const set: Database["public"]["Tables"]["line_items"]["Update"] = {};
+  if (patch.state) set.state = patch.state;
+  if (patch.confidence !== undefined) set.confidence = patch.confidence || null;
+  if (patch.room !== undefined) set.room = patch.room.trim() || null;
+  if (patch.unitPrice !== undefined) {
+    set.unit_price = patch.unitPrice;
+    set.price_id = null;
+    set.state = patch.unitPrice == null ? "unpriced" : "priced";
+    set.confidence = patch.unitPrice == null ? null : (set.confidence ?? "medium");
+  }
+
+  if (Object.keys(set).length) {
+    const { error } = await supabase.from("line_items").update(set).in("id", ids).eq("version_id", versionId);
+    if (error) return { error: error.message };
+  }
+  if (patch.quantityFactor !== undefined) {
+    if (!(patch.quantityFactor > 0)) return { error: "The factor must be more than 0." };
+    const { data: rows, error } = await supabase.from("line_items").select("id, quantity").in("id", ids).eq("version_id", versionId);
+    if (error) return { error: error.message };
+    for (const r of rows) {
+      const { error: e } = await supabase
+        .from("line_items")
+        .update({ quantity: Math.round(Number(r.quantity) * patch.quantityFactor * 1000) / 1000 })
+        .eq("id", r.id);
+      if (e) return { error: e.message };
+    }
+  }
+  revalidatePath(pathFor(projectId, versionId));
+  return { ok: `${ids.length} ${ids.length === 1 ? "line" : "lines"} updated.`, changeId };
+}
+
+export async function batchDeleteLines(projectId: string, versionId: string, ids: string[]): Promise<BatchState> {
+  try {
+    await requireWriter();
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+  if (!ids.length) return { error: "Select at least one line." };
+  const changeId = `app:${crypto.randomUUID()}`;
+  const supabase = await createClient(changeId);
+  const { data, error } = await supabase.from("line_items").delete().in("id", ids).eq("version_id", versionId).select("id");
+  if (error) return { error: error.message };
+  revalidatePath(pathFor(projectId, versionId));
+  return { ok: `${data.length} ${data.length === 1 ? "line" : "lines"} deleted.`, changeId };
+}
+
+export async function undoBatch(projectId: string, versionId: string, changeId: string): Promise<BatchState> {
+  try {
+    await requireWriter();
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("undo_change", { p_change_id: changeId });
+  if (error) return { error: error.message };
+  revalidatePath(pathFor(projectId, versionId));
+  return { ok: "Undone." };
 }

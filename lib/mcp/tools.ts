@@ -137,6 +137,14 @@ async function bestPrices(ctx: McpContext) {
   return new Map(rows.map((r) => [r.partida_id, r]));
 }
 
+function lineIds(a: Json): string[] {
+  const ids = Array.isArray(a.line_ids) ? (a.line_ids as unknown[]).map(String) : [];
+  const one = str(a, "line_id");
+  if (one) ids.push(one);
+  if (!ids.length) throw new ToolError("Give line_ids (or line_id).");
+  return ids;
+}
+
 const done = (changeId: string, extra: Json) => ({ change_id: changeId, ...extra, note: "Undo with undo_change and this change_id." });
 
 // ---------- read tools ----------
@@ -206,12 +214,12 @@ const READ: ToolDef[] = [
   {
     name: "get_version_budget",
     title: "Get a budget",
-    description: "The budget of a version: every line (partida code, description, unit, quantity, unit price, total, state, confidence) and the totals per chapter. Give version_id, or project (and optionally version label; default is the main version).",
+    description: "The budget of a version: every line (partida code, description, unit, quantity, unit price, total, state, confidence, room) and the totals per chapter. Give version_id, or project (and optionally version label; default is the main version).",
     inputSchema: schema({ version_id: P("Version id"), project: P("Project code, id or name"), version: P("Version label, e.g. A") }),
     run: async (a, ctx) => {
       const v = await version(ctx.db, a);
       const [lines, chapters] = await Promise.all([
-        ctx.db.from("line_items").select("id, quantity, unit_price, total, state, confidence, notes, partidas(code, short_description, unit, trades(code, name))").eq("version_id", v.id).order("created_at"),
+        ctx.db.from("line_items").select("id, quantity, unit_price, total, state, confidence, notes, room, partidas(code, short_description, unit, trades(code, name))").eq("version_id", v.id).order("created_at"),
         ctx.db.rpc("version_budget", { p_version: v.id }),
       ]);
       const ch = check(chapters);
@@ -221,7 +229,7 @@ const READ: ToolDef[] = [
         lines: check(lines).map((l) => ({
           line_id: l.id, code: l.partidas?.code, description: l.partidas?.short_description, unit: l.partidas?.unit,
           chapter: l.partidas?.trades?.name, quantity: Number(l.quantity), unit_price: l.unit_price == null ? null : Number(l.unit_price),
-          total: l.total == null ? null : Number(l.total), state: l.state, confidence: l.confidence, notes: l.notes,
+          total: l.total == null ? null : Number(l.total), state: l.state, confidence: l.confidence, room: l.room, notes: l.notes,
         })),
         chapters: ch,
         subtotal: ch.reduce((t, c) => t + Number(c.subtotal ?? 0), 0),
@@ -387,7 +395,7 @@ const WRITE: ToolDef[] = [
   {
     name: "add_room",
     title: "Add a room",
-    description: "Add a room from a template (list_room_templates): its standard lines with quantities scaled to the size. Same partidas already in the budget are added to, not duplicated.",
+    description: "Add a room from a template (list_room_templates): its standard lines with quantities scaled to the size, each tagged with the room name (label, or the template name).",
     writes: true,
     inputSchema: schema({ version_id: P("Version id"), project: P("Project (uses its main version)"), version: P("Version label"), template: P("Template code or id"), size: P("Room size in m²", "number"), label: P("Name for the room, e.g. 'Baño principal'") }, ["template", "size"]),
     run: async (a, ctx) => {
@@ -398,7 +406,7 @@ const WRITE: ToolDef[] = [
       if (!t) throw new ToolError(`No room template "${ref}".`);
       const { db, changeId } = ctx.change();
       const n = check(await db.rpc("apply_room_template", { p_version: v.id, p_template: t.id, p_size: num(a, "size", true), p_label: str(a, "label") }));
-      return done(changeId, { version: v.label, template: t.name, lines_added_or_updated: n });
+      return done(changeId, { version: v.label, template: t.name, lines_added: n });
     },
   },
   {
@@ -406,7 +414,7 @@ const WRITE: ToolDef[] = [
     title: "Add a budget line",
     description: "Add a partida to a version's budget. Without unit_price, the studio's best current price is used.",
     writes: true,
-    inputSchema: schema({ version_id: P("Version id"), project: P("Project (uses its main version)"), version: P("Version label"), partida: P("Partida code, e.g. REV-010"), quantity: P("Quantity in the partida's unit", "number"), unit_price: P("Unit price, if not the catalogue price", "number"), notes: P("Notes") }, ["partida", "quantity"]),
+    inputSchema: schema({ version_id: P("Version id"), project: P("Project (uses its main version)"), version: P("Version label"), partida: P("Partida code, e.g. REV-010"), quantity: P("Quantity in the partida's unit", "number"), unit_price: P("Unit price, if not the catalogue price", "number"), room: P("Room it belongs to, e.g. Cocina"), notes: P("Notes") }, ["partida", "quantity"]),
     run: async (a, ctx) => {
       const v = await version(ctx.db, a);
       const pt = await partida(ctx, str(a, "partida", true));
@@ -420,42 +428,58 @@ const WRITE: ToolDef[] = [
       const { db, changeId } = ctx.change();
       const line = check(await db.from("line_items").insert({
         organization_id: ctx.studio.id, version_id: v.id, partida_id: pt.id, quantity: num(a, "quantity", true), unit_price: unitPrice, price_id: priceId,
-        confidence, state: unitPrice != null ? "priced" : "unpriced", notes: str(a, "notes") ?? null,
+        confidence, state: unitPrice != null ? "priced" : "unpriced", room: str(a, "room") ?? null, notes: str(a, "notes") ?? null,
       }).select("id, quantity, unit_price, total, state").single());
       return done(changeId, { line: { ...line, code: pt.code, description: pt.short_description, unit: pt.unit } });
     },
   },
   {
     name: "update_line",
-    title: "Update a budget line",
-    description: "Change a line's quantity, unit price, state (unpriced, priced, needs_rfq, quoted) or notes. line_id comes from get_version_budget.",
+    title: "Update budget lines",
+    description: "Change one or several lines at once (line_ids from get_version_budget): quantity or a quantity factor, unit price, confidence, state (unpriced, priced, needs_rfq, quoted), room (empty string clears it) or notes. All lines change in one change_id.",
     writes: true,
-    inputSchema: schema({ line_id: P("Line id"), quantity: P("Quantity", "number"), unit_price: P("Unit price", "number"), state: P("State", "string", { enum: LINE_STATE }), notes: P("Notes") }, ["line_id"]),
+    inputSchema: schema({
+      line_ids: P("Line ids", "array", { items: { type: "string" } }), line_id: P("A single line id (instead of line_ids)"),
+      quantity: P("New quantity", "number"), quantity_factor: P("Multiply quantities by this, e.g. 1.1", "number"), unit_price: P("Unit price", "number"),
+      confidence: P("Confidence", "string", { enum: ["high", "medium", "low"] }), state: P("State", "string", { enum: LINE_STATE }), room: P("Room; empty string clears it"), notes: P("Notes"),
+    }),
     run: async (a, ctx) => {
+      const ids = lineIds(a);
       const patch: Database["public"]["Tables"]["line_items"]["Update"] = {};
       if (num(a, "quantity") !== undefined) patch.quantity = num(a, "quantity");
       if (num(a, "unit_price") !== undefined) { patch.unit_price = num(a, "unit_price"); patch.price_id = null; patch.confidence = "medium"; patch.state = "priced"; }
+      const confidence = oneOf(a, "confidence", ["high", "medium", "low"] as const);
+      if (confidence) patch.confidence = confidence;
       const state = oneOf(a, "state", LINE_STATE);
       if (state) patch.state = state;
+      if (a.room !== undefined) patch.room = String(a.room ?? "").trim() || null;
       if (str(a, "notes") !== undefined) patch.notes = str(a, "notes");
-      if (!Object.keys(patch).length) throw new ToolError("Nothing to change.");
+      const factor = num(a, "quantity_factor");
+      if (!Object.keys(patch).length && factor === undefined) throw new ToolError("Nothing to change.");
+      if (factor !== undefined && !(factor > 0)) throw new ToolError("quantity_factor must be more than 0.");
       const { db, changeId } = ctx.change();
-      const row = check(await db.from("line_items").update(patch).eq("id", str(a, "line_id", true)).select("id, quantity, unit_price, total, state").maybeSingle());
-      if (!row) throw new ToolError("No such line, or you can't change it.");
-      return done(changeId, { line: row });
+      let rows: { id: string }[] = [];
+      if (Object.keys(patch).length) rows = check(await db.from("line_items").update(patch).in("id", ids).select("id"));
+      if (factor !== undefined) {
+        const current = check(await ctx.db.from("line_items").select("id, quantity").in("id", ids));
+        for (const r of current) check(await db.from("line_items").update({ quantity: Math.round(Number(r.quantity) * factor * 1000) / 1000 }).eq("id", r.id));
+        rows = current;
+      }
+      if (!rows.length) throw new ToolError("No such lines, or you can't change them.");
+      return done(changeId, { updated: rows.length });
     },
   },
   {
     name: "remove_line",
-    title: "Remove a budget line",
-    description: "Remove a line from a budget.",
+    title: "Remove budget lines",
+    description: "Remove one or several lines from a budget, in one change_id.",
     writes: true,
     destructive: true,
-    inputSchema: schema({ line_id: P("Line id") }, ["line_id"]),
+    inputSchema: schema({ line_ids: P("Line ids", "array", { items: { type: "string" } }), line_id: P("A single line id (instead of line_ids)") }),
     run: async (a, ctx) => {
       const { db, changeId } = ctx.change();
-      const rows = check(await db.from("line_items").delete().eq("id", str(a, "line_id", true)).select("id"));
-      if (!rows.length) throw new ToolError("No such line, or you can't remove it.");
+      const rows = check(await db.from("line_items").delete().in("id", lineIds(a)).select("id"));
+      if (!rows.length) throw new ToolError("No such lines, or you can't remove them.");
       return done(changeId, { removed: rows.length });
     },
   },

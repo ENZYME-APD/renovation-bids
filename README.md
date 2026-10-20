@@ -14,7 +14,7 @@ From site visit to a priced offer. Multi-tenant from day one: Enzyme is the firs
 | `/dashboard` | KPIs, action items, charts (status, bids per month, €/m², budget vs committed vs paid), recent activity |
 | `/projects` | Project list and new project |
 | `/projects/[id]` | Project facts, status, versions with budget ranges, new version (empty or copied) |
-| `/projects/[id]/versions/[versionId]` | Budget editor: lines by trade, quantities, prices, confidence, low–high range per trade |
+| `/projects/[id]/versions/[versionId]` | Budget editor: lines grouped by chapter or room, batch edit (state, confidence, room, price, quantity factor, delete, undo), add room / add line dialogs |
 | `/projects/[id]/purchases` | Cost control by chapter, purchase orders from budget lines, supplier invoices, payments, "save as price" |
 | `/settings` | Profile, studio (currency, language, default contingency and VAT), team and invitations, AI access, activity log with undo |
 | `/invite/[token]` | Accept an invitation (must be signed in with the invited email) |
@@ -22,6 +22,10 @@ From site visit to a priced offer. Multi-tenant from day one: Enzyme is the firs
 | `/api/mcp` | MCP server for AI assistants (see below) |
 
 Roles: owner, admin (studio and team), member (edit projects), viewer (read only).
+
+## Theme
+
+Every colour, radius and font lives in `app/theme.css`, each colour as `light-dark(<light>, <dark>)`. Change the values there to rebrand; components only use the tokens (`bg-surface`, `text-ink`, `bg-accent`…). The header toggle cycles Auto (follows the system), Light and Dark, saved in a `theme` cookie so the page renders in the right theme straight away.
 
 ## AI assistants (MCP)
 

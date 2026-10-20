@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { requireStudio, getUser } from "@/lib/dal";
+import { cookies } from "next/headers";
 import { humanize } from "@/lib/format";
+import { ThemeToggle, type ThemeChoice } from "@/components/theme-toggle";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard" },
@@ -9,7 +11,9 @@ const NAV = [
 ];
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
-  const [studio, user] = await Promise.all([requireStudio(), getUser()]);
+  const [studio, user, jar] = await Promise.all([requireStudio(), getUser(), cookies()]);
+  const t = jar.get("theme")?.value;
+  const theme: ThemeChoice = t === "light" || t === "dark" ? t : "system";
   return (
     <div className="flex flex-1 flex-col">
       <header className="border-b border-line">
@@ -28,6 +32,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
             <span className="hidden text-muted md:inline">
               {studio.name} · {user.email} · {humanize(studio.role)}
             </span>
+            <ThemeToggle initial={theme} />
             <form action="/auth/signout" method="post">
               <button className="btn-quiet">Sign out</button>
             </form>
