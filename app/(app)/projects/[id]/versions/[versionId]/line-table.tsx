@@ -76,15 +76,15 @@ export function LineTable({
         const subtotal = g.lines.reduce((t, l) => t + Number(l.total ?? 0), 0);
         return (
           <div key={g.key} className="card overflow-x-auto">
-            <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-2 text-sm">
-              <div className="flex items-center gap-3 font-semibold">
+            <div className="flex items-center justify-between gap-3 border-b border-l-4 border-b-line border-l-accent bg-accent-soft px-4 py-3">
+              <div className="flex items-center gap-3 text-base font-semibold tracking-tight">
                 {canWrite && (
                   <Check checked={nSel === gIds.length} indeterminate={nSel > 0 && nSel < gIds.length} onChange={(on) => toggle(gIds, on)} label={`Select all in ${g.name}`} />
                 )}
                 {g.name}
-                <span className="font-normal text-muted">· {g.lines.length}</span>
+                <span className="text-sm font-normal text-muted">· {g.lines.length} {g.lines.length === 1 ? "line" : "lines"}</span>
               </div>
-              <span className="tabular-nums text-muted">{money2(subtotal)}</span>
+              <span className="text-base font-semibold tabular-nums">{money2(subtotal)}</span>
             </div>
             <table className="w-full min-w-[60rem] text-sm">
               <thead className="text-left text-xs text-muted">
@@ -106,15 +106,15 @@ export function LineTable({
                   const context = groupBy === "room" ? l.chapter : l.room;
                   return (
                     // Keyed by updatedAt so inputs remount with saved values after each save.
-                    <tr key={`${l.id}-${l.updatedAt}`} className={`border-b border-line align-top last:border-0 ${sel ? "bg-accent/5" : ""}`}>
+                    <tr key={`${l.id}-${l.updatedAt}`} className={`border-b border-line align-top last:border-0 ${sel ? "bg-accent-soft/60" : ""}`}>
                       {canWrite && (
                         <td className="px-4 py-3">
                           <Check checked={sel} onChange={(on) => toggle([l.id], on)} label={`Select ${l.code}`} />
                         </td>
                       )}
                       <td className="px-2 py-2">
-                        <span className="font-mono text-xs text-muted">{l.code}</span>
-                        <div>{l.description}</div>
+                        <span className="font-mono text-xs text-accent">{l.code}</span>
+                        <div className="text-[0.95rem] font-medium leading-snug">{l.description}</div>
                         {context && <div className="text-xs text-muted">{context}</div>}
                         {l.notes && <div className="text-xs text-muted italic">{l.notes}</div>}
                         {l.unitPrice == null && l.suggested != null && <div className="text-xs text-ok">Current price: {money2(l.suggested)}</div>}
