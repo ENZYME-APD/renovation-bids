@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { Modal } from "@/components/modal";
+import { ExportMenu } from "@/components/export-menu";
 import { humanize, unitLabel } from "@/lib/format";
 import { customise, deletePartida, deletePrice, savePartida, setActive, setPrice, type State } from "./actions";
 
@@ -70,6 +71,7 @@ export function CatalogueTable({ items, chapters, currency, canWrite }: { items:
         <button type="button" className="ml-auto text-sm text-muted hover:text-ink" onClick={() => setCollapsed(allCollapsed ? new Set() : new Set(groups.map((g) => g.chapter.id)))}>
           {allCollapsed ? "Expand all" : "Collapse all"}
         </button>
+        <ExportMenu href="/catalogue/export" />
         {canWrite && <button className="btn" onClick={() => setModal({ type: "new" })}>+ New partida</button>}
       </div>
 

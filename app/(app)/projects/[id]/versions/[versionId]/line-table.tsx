@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { humanize, money2 } from "@/lib/format";
 import { Constants } from "@/lib/database.types";
+import { ExportMenu } from "@/components/export-menu";
 import { batchDeleteLines, batchUpdateLines, deleteLine, undoBatch, updateLine, type BatchPatch, type BatchState } from "./actions";
 
 export type Line = {
@@ -23,6 +24,17 @@ export type Line = {
 };
 export type Group = { key: string; name: string; lines: Line[] };
 
+/** What's missing on a line, for the quick audit. Rooms only count once the budget uses them. */
+function issuesOf(l: Line, usesRooms: boolean): string[] {
+  const out: string[] = [];
+  if (l.unitPrice == null) out.push("no price");
+  if (!(l.quantity > 0)) out.push("no quantity");
+  if (l.unitPrice != null && !l.confidence) out.push("no confidence");
+  if (l.state === "needs_rfq") out.push("needs quote");
+  if (usesRooms && !l.room) out.push("no room");
+  return out;
+}
+
 export function LineTable({
   projectId, versionId, groups, groupBy, rooms, canWrite,
 }: { projectId: string; versionId: string; groups: Group[]; groupBy: "chapter" | "room"; rooms: string[]; canWrite: boolean }) {
@@ -30,7 +42,14 @@ export function LineTable({
   const [picked, setSelected] = useState<Set<string>>(new Set());
   const [result, setResult] = useState<BatchState>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  const allCollapsed = groups.length > 0 && groups.every((g) => collapsed.has(g.key));
+  const [auditOnly, setAuditOnly] = useState(false);
+  const usesRooms = useMemo(() => groups.some((g) => g.lines.some((l) => l.room)), [groups]);
+  const issueCount = useMemo(() => groups.reduce((t, g) => t + g.lines.filter((l) => issuesOf(l, usesRooms).length).length, 0), [groups, usesRooms]);
+  const shown = useMemo(
+    () => (auditOnly ? groups.map((g) => ({ ...g, lines: g.lines.filter((l) => issuesOf(l, usesRooms).length) })).filter((g) => g.lines.length) : groups),
+    [groups, auditOnly, usesRooms],
+  );
+  const allCollapsed = shown.length > 0 && shown.every((g) => collapsed.has(g.key));
   const toggleGroup = (key: string) =>
     setCollapsed((c) => {
       const next = new Set(c);
@@ -80,17 +99,26 @@ export function LineTable({
               <span>{selected.size ? `${selected.size} of ${allIds.length} selected` : "Select lines to edit them together"}</span>
             </>
           )}
-          <button
-            type="button"
-            className="ml-auto hover:text-ink"
-            onClick={() => setCollapsed(allCollapsed ? new Set() : new Set(groups.map((g) => g.key)))}
-          >
-            {allCollapsed ? "Expand all" : "Collapse all"}
-          </button>
+          <div className="ml-auto flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => setAuditOnly((v) => !v)}
+              aria-pressed={auditOnly}
+              className={auditOnly ? "font-medium text-accent" : "hover:text-ink"}
+              title="Lines without a price, quantity or confidence, needing a quote, or without a room"
+            >
+              {auditOnly ? `Showing ${issueCount} incomplete · Show all` : `Incomplete only (${issueCount})`}
+            </button>
+            <button type="button" className="hover:text-ink" onClick={() => setCollapsed(allCollapsed ? new Set() : new Set(shown.map((g) => g.key)))}>
+              {allCollapsed ? "Expand all" : "Collapse all"}
+            </button>
+            <ExportMenu href={`/projects/${projectId}/versions/${versionId}/export`} />
+          </div>
         </div>
       )}
+      {auditOnly && issueCount === 0 && <p className="text-sm text-ok">Nothing missing: every line has a quantity, price and confidence.</p>}
 
-      {groups.map((g) => {
+      {shown.map((g) => {
         const gIds = g.lines.map((l) => l.id);
         const nSel = gIds.filter((id) => selected.has(id)).length;
         const subtotal = g.lines.reduce((t, l) => t + Number(l.total ?? 0), 0);
@@ -146,6 +174,11 @@ export function LineTable({
                         <span className="font-mono text-xs text-accent">{l.code}</span>
                         <div className="text-[0.95rem] font-medium leading-snug">{l.description}</div>
                         {context && <div className="text-xs text-muted">{context}</div>}
+                        {auditOnly && (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {issuesOf(l, usesRooms).map((x) => <span key={x} className="rounded-full border border-accent px-1.5 text-[0.65rem] text-accent">{x}</span>)}
+                          </div>
+                        )}
                         {l.notes && <div className="text-xs text-muted italic">{l.notes}</div>}
                         {l.unitPrice == null && l.suggested != null && <div className="text-xs text-ok">Current price: {money2(l.suggested)}</div>}
                       </td>
