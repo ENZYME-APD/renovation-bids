@@ -245,6 +245,7 @@ export type Database = {
           partida_id: string
           price_id: string | null
           quantity: number
+          room: string | null
           state: Database["public"]["Enums"]["line_state"]
           total: number | null
           unit_price: number | null
@@ -261,6 +262,7 @@ export type Database = {
           partida_id: string
           price_id?: string | null
           quantity?: number
+          room?: string | null
           state?: Database["public"]["Enums"]["line_state"]
           total?: never
           unit_price?: number | null
@@ -277,6 +279,7 @@ export type Database = {
           partida_id?: string
           price_id?: string | null
           quantity?: number
+          room?: string | null
           state?: Database["public"]["Enums"]["line_state"]
           total?: never
           unit_price?: number | null

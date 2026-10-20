@@ -43,7 +43,7 @@ begin
   perform pg_temp.check(v_tile = 18.5, 'wall tiling = 3.7 × 5 m² = 18.5 m²');
   perform pg_temp.check((select unit_price = 90 and state = 'priced' from public.line_items li join public.partidas p on p.id = li.partida_id
                           where li.version_id = v_version and p.code = 'REV-010'), 'line picks up the studio''s own price');
-  perform pg_temp.check((select bool_and(notes = 'Baño principal') from public.line_items where version_id = v_version), 'lines labelled with the room');
+  perform pg_temp.check((select bool_and(room = 'Baño principal' and notes is null) from public.line_items where version_id = v_version), 'lines labelled with the room');
   perform pg_temp.check((select count(*) = 0 from public.line_items li join public.partidas p on p.id = li.partida_id
                           where li.version_id = v_version and p.code = 'SAN-010' and li.quantity <> 1), 'fixed items count once per room');
 

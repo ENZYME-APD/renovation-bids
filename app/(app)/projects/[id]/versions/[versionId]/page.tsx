@@ -2,14 +2,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/dal";
-import { humanize, money, money2, unitLabel } from "@/lib/format";
+import { humanize, money, unitLabel } from "@/lib/format";
 import { Constants } from "@/lib/database.types";
-import { deleteLine, updateLine, updateVersionStatus } from "./actions";
-import { AddLineForm } from "./add-line-form";
-import { AddRoomForm } from "./add-room-form";
+import { updateVersionStatus } from "./actions";
+import { AddButtons } from "./add-buttons";
+import { LineTable, type Group, type Line } from "./line-table";
 
-export default async function VersionPage({ params }: PageProps<"/projects/[id]/versions/[versionId]">) {
+export default async function VersionPage({ params, searchParams }: PageProps<"/projects/[id]/versions/[versionId]">) {
   const { id: projectId, versionId } = await params;
+  const groupBy = (await searchParams).group === "room" ? "room" : "chapter";
   const studio = await requireStudio();
   const supabase = await createClient();
 
@@ -23,7 +24,7 @@ export default async function VersionPage({ params }: PageProps<"/projects/[id]/
     supabase.rpc("version_budget", { p_version: versionId }),
     supabase
       .from("line_items")
-      .select("id, quantity, unit_price, confidence, state, total, notes, updated_at, partidas(id, code, short_description, unit, trades(id, code, name, sequence))")
+      .select("id, quantity, unit_price, confidence, state, total, notes, room, updated_at, partidas(id, code, short_description, unit, trades(id, code, name, sequence))")
       .eq("version_id", versionId)
       .order("created_at", { ascending: true }),
     supabase
@@ -50,15 +51,39 @@ export default async function VersionPage({ params }: PageProps<"/projects/[id]/
     { sub: 0, low: 0, high: 0 },
   );
 
-  // Group lines by trade, in site order.
-  const groups = new Map<string, { name: string; sequence: number; lines: typeof lines }>();
-  for (const l of lines) {
+  // Lines for the table, grouped by chapter (site order) or by room (order first added).
+  const rows: (Line & { sequence: number; chapterKey: string })[] = lines.map((l) => {
     const t = l.partidas?.trades;
-    const key = t?.id ?? "none";
-    if (!groups.has(key)) groups.set(key, { name: t ? (t.code ? `${t.code} · ${t.name}` : t.name) : "Other", sequence: t?.sequence ?? 999, lines: [] });
-    groups.get(key)!.lines.push(l);
+    return {
+      id: l.id,
+      code: l.partidas?.code ?? "",
+      description: l.partidas?.short_description ?? "",
+      unit: unitLabel[l.partidas?.unit ?? ""] ?? "",
+      quantity: Number(l.quantity),
+      unitPrice: l.unit_price == null ? null : Number(l.unit_price),
+      confidence: l.confidence,
+      state: l.state,
+      total: l.total == null ? null : Number(l.total),
+      notes: l.notes,
+      room: l.room,
+      chapter: t ? (t.code ? `${t.code} · ${t.name}` : t.name) : "Other",
+      suggested: l.partidas ? (priceByPartida.get(l.partidas.id) ?? null) : null,
+      updatedAt: l.updated_at,
+      sequence: t?.sequence ?? 999,
+      chapterKey: t?.id ?? "none",
+    };
+  });
+  const rooms = [...new Set(rows.map((r) => r.room).filter((r): r is string => !!r))];
+  const groupMap = new Map<string, Group & { order: number }>();
+  for (const r of rows) {
+    const key = groupBy === "room" ? (r.room ?? "") : r.chapterKey;
+    const name = groupBy === "room" ? (r.room ?? "No room") : r.chapter;
+    const order = groupBy === "room" ? (r.room ? rooms.indexOf(r.room) : 9999) : r.sequence;
+    if (!groupMap.has(key)) groupMap.set(key, { key, name, order, lines: [] });
+    groupMap.get(key)!.lines.push(r);
   }
-  const lineGroups = [...groups.values()].sort((a, b) => a.sequence - b.sequence);
+  const lineGroups: Group[] = [...groupMap.values()].sort((a, b) => a.order - b.order);
+  if (groupBy === "room") for (const g of lineGroups) g.lines.sort((a, b) => (a as typeof rows[number]).sequence - (b as typeof rows[number]).sequence);
 
   // Partida picker, grouped by trade.
   const picker = new Map<string, { trade: string; sequence: number; partidas: { id: string; code: string; description: string; unit: string; price: number | null }[] }>();
@@ -76,6 +101,15 @@ export default async function VersionPage({ params }: PageProps<"/projects/[id]/
       <input type="hidden" name="project_id" value={projectId} />
       <input type="hidden" name="version_id" value={versionId} />
     </>
+  );
+  const tab = (g: "chapter" | "room", label: string) => (
+    <Link
+      href={`?group=${g}`}
+      scroll={false}
+      className={`rounded px-3 py-1 ${groupBy === g ? "bg-surface text-ink shadow-sm" : "text-muted hover:text-ink"}`}
+    >
+      {label}
+    </Link>
   );
 
   return (
@@ -151,94 +185,22 @@ export default async function VersionPage({ params }: PageProps<"/projects/[id]/
       )}
 
       <section className="space-y-4">
-        <h2 className="text-lg font-semibold tracking-tight">Line items</h2>
-        {lines.length === 0 && <p className="text-sm text-muted">No lines yet. Add the first partida below.</p>}
-        {lineGroups.map((g) => (
-          <div key={g.name} className="card overflow-x-auto">
-            <div className="border-b border-line px-4 py-2 text-sm font-semibold">{g.name}</div>
-            <table className="w-full min-w-[56rem] text-sm">
-              <thead className="text-left text-xs text-muted">
-                <tr className="border-b border-line">
-                  <th className="px-4 py-2 font-medium">Partida</th>
-                  <th className="w-28 px-2 py-2 font-medium">Qty</th>
-                  <th className="w-28 px-2 py-2 font-medium">Unit price</th>
-                  <th className="w-28 px-2 py-2 font-medium">Confidence</th>
-                  <th className="w-32 px-2 py-2 font-medium">State</th>
-                  <th className="w-28 px-2 py-2 text-right font-medium">Total</th>
-                  <th className="w-36 px-4 py-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {g.lines.map((l) => {
-                  const fid = `line-${l.id}`;
-                  const suggested = l.partidas ? priceByPartida.get(l.partidas.id) : undefined;
-                  return (
-                    // Keyed by updated_at so inputs remount with saved values after each save.
-                    <tr key={`${l.id}-${l.updated_at}`} className="border-b border-line last:border-0 align-top">
-                      <td className="px-4 py-2">
-                        <span className="font-mono text-xs text-muted">{l.partidas?.code}</span>
-                        <div>{l.partidas?.short_description}</div>
-                        {l.notes && <div className="text-xs text-muted">{l.notes}</div>}
-                        {l.unit_price == null && suggested != null && (
-                          <div className="text-xs text-ok">Current price: {money2(suggested)}</div>
-                        )}
-                      </td>
-                      <td className="px-2 py-2">
-                        <div className="flex items-center gap-1">
-                          <input form={fid} name="quantity" defaultValue={l.quantity} inputMode="decimal" className="input px-2 py-1" />
-                          <span className="text-xs text-muted">{unitLabel[l.partidas?.unit ?? ""] ?? ""}</span>
-                        </div>
-                      </td>
-                      <td className="px-2 py-2">
-                        <input form={fid} name="unit_price" defaultValue={l.unit_price ?? ""} inputMode="decimal" className="input px-2 py-1" placeholder="—" />
-                      </td>
-                      <td className="px-2 py-2">
-                        <select form={fid} name="confidence" defaultValue={l.confidence ?? ""} className="input px-2 py-1">
-                          <option value="">—</option>
-                          {Constants.public.Enums.confidence.map((c) => <option key={c} value={c}>{humanize(c)}</option>)}
-                        </select>
-                      </td>
-                      <td className="px-2 py-2">
-                        <select form={fid} name="state" defaultValue={l.state} className="input px-2 py-1">
-                          {Constants.public.Enums.line_state.map((s) => <option key={s} value={s}>{humanize(s)}</option>)}
-                        </select>
-                      </td>
-                      <td className="px-2 py-2 text-right tabular-nums">{money2(l.total)}</td>
-                      <td className="px-4 py-2">
-                        <div className="flex justify-end gap-2">
-                          <form id={fid} action={updateLine}>
-                            {hidden}
-                            <input type="hidden" name="id" value={l.id} />
-                            <input type="hidden" name="orig_price" value={l.unit_price ?? ""} />
-                            <button className="btn-quiet">Save</button>
-                          </form>
-                          <form action={deleteLine}>
-                            {hidden}
-                            <input type="hidden" name="id" value={l.id} />
-                            <button className="btn-quiet text-muted" aria-label="Delete line">Delete</button>
-                          </form>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-4">
+            <h2 className="text-lg font-semibold tracking-tight">Line items</h2>
+            <div className="flex rounded-md border border-line bg-paper p-0.5 text-sm" role="group" aria-label="Group lines by">
+              {tab("chapter", "By chapter")}
+              {tab("room", "By room")}
+            </div>
           </div>
-        ))}
-
-        <div className="card p-5">
-          <h3 className="text-sm font-semibold">Add a room</h3>
-          <p className="mb-4 mt-1 text-xs text-muted">
-            Fills in the standard items for that room type, sized by its area. Layout and design items (partitions, wardrobes, heating, air conditioning) are added as single lines.
-          </p>
-          <AddRoomForm projectId={projectId} versionId={versionId} templates={templatesRes.data ?? []} />
+          {studio.canWrite && (
+            <div className="flex gap-2">
+              <AddButtons projectId={projectId} versionId={versionId} templates={templatesRes.data ?? []} groups={pickerGroups} rooms={rooms} />
+            </div>
+          )}
         </div>
-
-        <div className="card p-5">
-          <h3 className="mb-4 text-sm font-semibold">Add a line</h3>
-          <AddLineForm projectId={projectId} versionId={versionId} groups={pickerGroups} />
-        </div>
+        {lines.length === 0 && <p className="text-sm text-muted">No lines yet. Add a room to fill in its standard items, or add partidas one by one.</p>}
+        <LineTable projectId={projectId} versionId={versionId} groups={lineGroups} groupBy={groupBy} rooms={rooms} canWrite={studio.canWrite} />
       </section>
     </div>
   );
