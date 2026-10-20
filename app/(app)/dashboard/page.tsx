@@ -64,7 +64,7 @@ export default async function DashboardPage() {
           <p className="eyebrow">{studio.name}</p>
           <h1 className="text-2xl font-semibold">Dashboard</h1>
         </div>
-        {studio.canWrite && <Link href="/projects" className="btn">Projects</Link>}
+        {studio.canWrite && <Link href="/projects?new=1" className="btn">+ New project</Link>}
       </header>
 
       <section className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
