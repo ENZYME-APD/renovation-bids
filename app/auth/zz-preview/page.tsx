@@ -1,11 +1,9 @@
-import { CatalogueTable, type Item } from "@/app/(app)/catalogue/catalogue-table";
-const chapters = [{ id: "t1", code: "REV", name: "Revestimientos de paredes" }, { id: "t2", code: "SAN", name: "Sanitarios, grifería y equipamiento de baño" }];
-const it = (id: string, code: string, d: string, kind: Item["kind"], tradeId: string, price: number | null, hidden = false): Item => ({
-  id, code, description: d, longDescription: kind === "standard" ? "Incluye material, colocación con adhesivo cementoso, rejuntado y limpieza." : null, unit: "m2", tradeId, referenceCode: null, kind, hidden,
-  price: price == null ? null : { unitPrice: price, source: "history", confidence: "medium", pricedOn: "2026-09-01", own: true },
-  history: price == null ? [] : [{ id: id + "h", unitPrice: price, source: "history", confidence: "medium", pricedOn: "2026-09-01", validUntil: null, notes: "OG47 PCA 40 + PS 45", own: true }],
+import { LineTable, type Group } from "@/app/(app)/projects/[id]/versions/[versionId]/line-table";
+const mk = (i: number, code: string, d: string, price: number | null, conf: string | null, state: string, room: string | null) => ({
+  id: `00000000-0000-0000-0000-00000000000${i}`, code, description: d, unit: "m²", quantity: 7.5, unitPrice: price, confidence: conf,
+  state, total: price == null ? null : price * 7.5, notes: null, room, chapter: "TEC", suggested: null, updatedAt: "x",
 });
-const items = [it("a", "REV-010", "Alicatado de gres porcelánico", "custom", "t1", 90), it("b", "REV-020", "Alicatado cerámico", "standard", "t1", null), it("c", "REV-900", "Microcemento Enzyme", "own", "t1", 75), it("d", "SAN-010", "Plato de ducha resina", "standard", "t2", 640)];
+const groups: Group[] = [{ key: "a", name: "Baño completo con ducha", lines: [mk(1, "TEC-020", "Falso techo PYL hidrófugo", 32, "medium", "priced", "Baño"), mk(2, "IMP-010", "Impermeabilización de suelo", null, null, "unpriced", "Baño"), mk(3, "SAN-020", "Inodoro suspendido", 850, null, "needs_rfq", null)] }];
 export default function Preview() {
-  return <main className="mx-auto w-full max-w-6xl px-6 py-8"><CatalogueTable items={items} chapters={chapters} currency="EUR" canWrite /></main>;
+  return <main className="mx-auto w-full max-w-6xl px-6 py-8"><LineTable projectId="p" versionId="v" groups={groups} groupBy="room" rooms={[]} canWrite /></main>;
 }
