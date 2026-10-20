@@ -16,6 +16,7 @@ From site visit to a priced offer. Multi-tenant from day one: Enzyme is the firs
 | `/projects/[id]` | Project facts, status, versions with budget ranges, new version (empty or copied) |
 | `/projects/[id]/versions/[versionId]` | Budget editor: lines grouped by chapter or room, batch edit (state, confidence, room, price, quantity factor, delete, undo), add room / add line dialogs |
 | `/projects/[id]/purchases` | Cost control by chapter, purchase orders from budget lines, supplier invoices, payments, "save as price" |
+| `/catalogue` | Partidas by chapter with current price and price history; new studio partidas, customise or hide standard ones, set prices |
 | `/settings` | Profile, studio (currency, language, default contingency and VAT), team and invitations, AI access, activity log with undo |
 | `/invite/[token]` | Accept an invitation (must be signed in with the invited email) |
 | `/oauth/consent` | Approve an AI assistant's access (Supabase OAuth server) |
