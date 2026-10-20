@@ -29,6 +29,15 @@ export function LineTable({
   const allIds = useMemo(() => groups.flatMap((g) => g.lines.map((l) => l.id)), [groups]);
   const [picked, setSelected] = useState<Set<string>>(new Set());
   const [result, setResult] = useState<BatchState>(null);
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const allCollapsed = groups.length > 0 && groups.every((g) => collapsed.has(g.key));
+  const toggleGroup = (key: string) =>
+    setCollapsed((c) => {
+      const next = new Set(c);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   const [pending, start] = useTransition();
   // Only ids still on the page count (lines can disappear after a delete or an undo).
   const selected = useMemo(() => new Set(allIds.filter((id) => picked.has(id))), [allIds, picked]);
@@ -58,15 +67,26 @@ export function LineTable({
 
   return (
     <div className="space-y-4">
-      {canWrite && allIds.length > 0 && (
+      {allIds.length > 0 && (
         <div className="flex items-center gap-3 text-sm text-muted">
-          <Check
-            checked={selected.size === allIds.length}
-            indeterminate={selected.size > 0 && selected.size < allIds.length}
-            onChange={(on) => toggle(allIds, on)}
-            label="Select all lines"
-          />
-          <span>{selected.size ? `${selected.size} of ${allIds.length} selected` : "Select lines to edit them together"}</span>
+          {canWrite && (
+            <>
+              <Check
+                checked={selected.size === allIds.length}
+                indeterminate={selected.size > 0 && selected.size < allIds.length}
+                onChange={(on) => toggle(allIds, on)}
+                label="Select all lines"
+              />
+              <span>{selected.size ? `${selected.size} of ${allIds.length} selected` : "Select lines to edit them together"}</span>
+            </>
+          )}
+          <button
+            type="button"
+            className="ml-auto hover:text-ink"
+            onClick={() => setCollapsed(allCollapsed ? new Set() : new Set(groups.map((g) => g.key)))}
+          >
+            {allCollapsed ? "Expand all" : "Collapse all"}
+          </button>
         </div>
       )}
 
@@ -74,18 +94,28 @@ export function LineTable({
         const gIds = g.lines.map((l) => l.id);
         const nSel = gIds.filter((id) => selected.has(id)).length;
         const subtotal = g.lines.reduce((t, l) => t + Number(l.total ?? 0), 0);
+        const open = !collapsed.has(g.key);
         return (
           <div key={g.key} className="card overflow-x-auto">
-            <div className="flex items-center justify-between gap-3 border-b border-l-4 border-b-line border-l-accent bg-accent-soft px-4 py-3">
+            <div className={`flex items-center justify-between gap-3 border-l-4 border-l-accent bg-accent-soft px-4 py-3 ${open ? "border-b border-b-line" : ""}`}>
               <div className="flex items-center gap-3 text-base font-semibold tracking-tight">
                 {canWrite && (
                   <Check checked={nSel === gIds.length} indeterminate={nSel > 0 && nSel < gIds.length} onChange={(on) => toggle(gIds, on)} label={`Select all in ${g.name}`} />
                 )}
-                {g.name}
-                <span className="text-sm font-normal text-muted">· {g.lines.length} {g.lines.length === 1 ? "line" : "lines"}</span>
+                <button type="button" onClick={() => toggleGroup(g.key)} aria-expanded={open} className="flex items-center gap-2 text-left hover:text-accent">
+                  <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden className={`transition-transform ${open ? "rotate-90" : ""}`}>
+                    <path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  {g.name}
+                </button>
+                <span className="text-sm font-normal text-muted">
+                  · {g.lines.length} {g.lines.length === 1 ? "line" : "lines"}
+                  {nSel > 0 && !open && ` · ${nSel} selected`}
+                </span>
               </div>
               <span className="text-base font-semibold tabular-nums">{money2(subtotal)}</span>
             </div>
+            {open && (
             <table className="w-full min-w-[60rem] text-sm">
               <thead className="text-left text-xs text-muted">
                 <tr className="border-b border-line">
@@ -162,6 +192,7 @@ export function LineTable({
                 })}
               </tbody>
             </table>
+            )}
           </div>
         );
       })}
