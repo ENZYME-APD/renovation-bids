@@ -10,6 +10,8 @@ export async function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
+      // Every request from the app is one change in the activity log (undo works per change).
+      global: { headers: { "x-client-source": "app", "x-change-id": `app:${crypto.randomUUID()}` } },
       cookies: {
         getAll() {
           return cookieStore.getAll();

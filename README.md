@@ -11,9 +11,35 @@ From site visit to a priced offer. Multi-tenant from day one: Enzyme is the firs
 |---|---|
 | `/login` | Email sign-in link (no password) |
 | `/onboarding` | Create your studio; you become its owner |
+| `/dashboard` | KPIs, action items, charts (status, bids per month, €/m², budget vs committed vs paid), recent activity |
 | `/projects` | Project list and new project |
 | `/projects/[id]` | Project facts, status, versions with budget ranges, new version (empty or copied) |
 | `/projects/[id]/versions/[versionId]` | Budget editor: lines by trade, quantities, prices, confidence, low–high range per trade |
+| `/projects/[id]/purchases` | Cost control by chapter, purchase orders from budget lines, supplier invoices, payments, "save as price" |
+| `/settings` | Profile, studio (currency, language, default contingency and VAT), team and invitations, AI access, activity log with undo |
+| `/invite/[token]` | Accept an invitation (must be signed in with the invited email) |
+| `/oauth/consent` | Approve an AI assistant's access (Supabase OAuth server) |
+| `/api/mcp` | MCP server for AI assistants (see below) |
+
+Roles: owner, admin (studio and team), member (edit projects), viewer (read only).
+
+## AI assistants (MCP)
+
+`/api/mcp` is a stateless MCP server (JSON-RPC over HTTP), modelled on the Fee Calculator's. Sign-in is OAuth 2.1 with Supabase Auth as the authorization server; the assistant's token runs as the user, so row-level security applies. The studio's rules (Settings → AI access: who may connect, who may let it make changes) are enforced in the database too (`…_ai_access_rules.sql`), because an assistant's token could also reach the Data API directly. Assistants never get admin rights. Every change carries a change id and can be undone.
+
+One-time setup in Supabase (Authentication → OAuth Server): enable it, set the authorization path to `/oauth/consent`, allow dynamic client registration. Then in Claude add a custom connector with `https://renovation-bids.vercel.app/api/mcp`.
+
+## Activity log
+
+Database triggers record every insert, update and delete on studio data: who, when, from where (app, AI, system), the old and new row. The app sends `x-change-id` per request and the MCP server per tool call; `undo_change(change_id)` reverts a whole change, refusing if the rows were edited since.
+
+## Types
+
+`lib/database.types.ts` can be regenerated from a local database with the migrations applied (useful before a migration is deployed):
+
+```
+PGHOST=... PGUSER=... PGDATABASE=... python3 scripts/gen_types.py
+```
 
 Local development:
 
@@ -37,7 +63,11 @@ All data access goes through the signed-in user's session, so the database's row
 | `…_queries.sql` | `current_prices()`, `version_budget()`, views for reminders, supplier response, estimate accuracy, lines needing a price |
 | `…_cron.sql` | Daily pg_cron job that expires unanswered supplier requests |
 | `…_seed_spain.sql` | Spain region settings, 15 trades, 15 starter partidas (placeholder codes, no prices) |
-| `supabase/tests/` | Local test runner + 36 checks: tenant isolation and the core bid flow |
+| `…_catalogue_es_v1.sql` | Standard catalogue: 20 chapters, 97 partidas, 10 room templates, bid-stage rule |
+| `…_roles_settings_activity.sql` | Viewer role, studio settings, profiles, invitations, activity log and undo |
+| `…_purchases_dashboard.sql` | Purchase orders, supplier invoices, payments, cost-control and dashboard views, action items |
+| `…_ai_access_rules.sql` | Studio AI rules enforced in the membership helpers |
+| `supabase/tests/` | Local test runner + 97 checks: tenant isolation, bid flow, catalogue, activity/undo, roles, purchasing, AI rules |
 
 ## Rules the database enforces
 

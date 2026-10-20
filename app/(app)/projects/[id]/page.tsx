@@ -58,6 +58,9 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
           <div>
             <p className="font-mono text-xs text-muted">{project.code}</p>
             <h1 className="text-2xl font-semibold tracking-tight">{project.name}</h1>
+            <Link href={`/projects/${project.id}/purchases`} className="mt-1 inline-block text-sm text-muted hover:text-ink">
+              Purchases and cost control →
+            </Link>
           </div>
           <form action={updateProjectStatus} className="flex items-end gap-2">
             <input type="hidden" name="id" value={project.id} />

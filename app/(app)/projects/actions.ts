@@ -3,14 +3,14 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireStudio } from "@/lib/dal";
+import { requireWriter } from "@/lib/dal";
 import { toNumber } from "@/lib/format";
 import type { Database } from "@/lib/database.types";
 
 type ProjectStatus = Database["public"]["Enums"]["project_status"];
 
 export async function createProject(_prev: string | null, formData: FormData): Promise<string | null> {
-  const studio = await requireStudio();
+  const studio = await requireWriter();
   const supabase = await createClient();
 
   const name = String(formData.get("name") ?? "").trim();
@@ -51,7 +51,7 @@ export async function createProject(_prev: string | null, formData: FormData): P
 }
 
 export async function updateProjectStatus(formData: FormData) {
-  await requireStudio();
+  await requireWriter();
   const supabase = await createClient();
   const id = String(formData.get("id"));
   const status = String(formData.get("status")) as ProjectStatus;

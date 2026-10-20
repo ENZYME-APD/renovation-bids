@@ -1,7 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/auth"];
+// /api/mcp and /.well-known use bearer tokens, not the session cookie.
+const PUBLIC_PATHS = ["/login", "/auth", "/api/mcp", "/.well-known"];
+export const NEXT_COOKIE = "rb_next";
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -35,9 +37,15 @@ export async function updateSession(request: NextRequest) {
   const isPublic = PUBLIC_PATHS.some((p) => request.nextUrl.pathname.startsWith(p));
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
+    const next = request.nextUrl.pathname + request.nextUrl.search;
     url.pathname = "/login";
     url.search = "";
-    return NextResponse.redirect(url);
+    const res = NextResponse.redirect(url);
+    // Come back here after signing in (OAuth consent, invitations, deep links)
+    if (next !== "/" && next.startsWith("/")) {
+      res.cookies.set(NEXT_COOKIE, next, { httpOnly: true, sameSite: "lax", secure: true, maxAge: 60 * 30, path: "/" });
+    }
+    return res;
   }
 
   return supabaseResponse;
