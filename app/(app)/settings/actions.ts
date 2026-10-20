@@ -117,3 +117,13 @@ export async function revokeAppAccess(fd: FormData) {
   if (error) throw new Error(error.message);
   revalidatePath("/settings");
 }
+
+export async function setPassword(_p: FormState, fd: FormData): Promise<FormState> {
+  await getUser();
+  const password = String(fd.get("password") ?? "");
+  if (password.length < 10) return { error: "Use at least 10 characters." };
+  if (password !== String(fd.get("confirm") ?? "")) return { error: "The two passwords don’t match." };
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ password });
+  return error ? { error: error.message } : { ok: "Password saved. You can now sign in with it." };
+}

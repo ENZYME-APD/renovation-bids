@@ -5,7 +5,7 @@ import { getUser, requireStudio, type Role } from "@/lib/dal";
 import { dateTime } from "@/lib/format";
 import { describe, groupChanges, sourceLabel, type ActivityRow } from "@/lib/activity";
 import { CopyBox } from "@/components/copy-box";
-import { AiRulesForm, InviteForm, ProfileForm, StudioForm, UndoButton } from "./forms";
+import { AiRulesForm, InviteForm, PasswordForm, ProfileForm, StudioForm, UndoButton } from "./forms";
 import { changeRole, removeMember, revokeAppAccess, revokeInvitation } from "./actions";
 
 const TABS = [
@@ -49,7 +49,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
           </Link>
         ))}
       </nav>
-      {tab === "profile" && <ProfileTab userId={user.id} email={user.email} />}
+      {tab === "profile" && <ProfileTab userId={user.id} email={user.email} resetting={sp.password === "1"} />}
       {tab === "studio" && (
         <section className="card space-y-4">
           {!studio.isAdmin && <p className="text-sm text-muted">Only owners and admins can change studio settings.</p>}
@@ -70,12 +70,15 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
   );
 }
 
-async function ProfileTab({ userId, email }: { userId: string; email: string }) {
+async function ProfileTab({ userId, email, resetting }: { userId: string; email: string; resetting: boolean }) {
   const supabase = await createClient();
   const { data } = await supabase.from("profiles").select("display_name, language").eq("user_id", userId).maybeSingle();
   return (
     <section className="card space-y-4">
       <ProfileForm email={email} displayName={data?.display_name ?? ""} language={data?.language ?? ""} />
+      <div className="border-t border-line pt-4">
+        <PasswordForm highlight={resetting} />
+      </div>
       <form action="/auth/signout" method="post">
         <button className="btn-quiet">Sign out</button>
       </form>
