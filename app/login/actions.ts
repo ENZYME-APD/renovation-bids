@@ -68,7 +68,21 @@ export async function sendPasswordReset(_prev: LoginState, fd: FormData): Promis
   return { status: "sent", message: `Check ${email} for a link to set a new password.` };
 }
 
+/** True when Google is switched on in Supabase (Authentication → Sign In / Providers). */
+async function googleEnabled() {
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/settings`, {
+      headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY! },
+      next: { revalidate: 60 },
+    });
+    return res.ok ? Boolean((await res.json())?.external?.google) : true;
+  } catch {
+    return true;
+  }
+}
+
 export async function signInWithGoogle() {
+  if (!(await googleEnabled())) redirect(`/login?error=${encodeURIComponent(friendly("provider is not enabled"))}`);
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
