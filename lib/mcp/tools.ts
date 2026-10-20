@@ -1,6 +1,7 @@
 import "server-only";
 import type { Database } from "@/lib/database.types";
 import { describe, groupChanges, type ActivityRow } from "@/lib/activity";
+import { effectiveCatalogue } from "@/lib/catalogue";
 import type { Db, McpContext } from "./context";
 
 // Tools for the AI connection. Every query runs as the signed-in user, so row-level security
@@ -110,10 +111,13 @@ async function version(db: Db, a: Json) {
 }
 
 async function partida(ctx: McpContext, ref: string) {
-  const q = ctx.db.from("partidas").select("id, code, short_description, unit, trade_id, organization_id").eq("region_id", ctx.studio.regionId).eq("active", true);
+  const q = ctx.db.from("partidas").select("id, code, short_description, unit, trade_id, organization_id, active").eq("region_id", ctx.studio.regionId);
   const rows = check(UUID.test(ref) ? await q.eq("id", ref) : await q.ilike("code", ref));
-  const pick = rows.find((r) => r.organization_id === ctx.studio.id) ?? rows[0];
-  if (!pick) throw new ToolError(`No partida "${ref}". Use search_catalogue to find its code.`);
+  if (!rows.length) throw new ToolError(`No partida "${ref}". Use search_catalogue to find its code.`);
+  // The studio's own version of a code replaces the standard one; an inactive one hides it.
+  const sameCode = UUID.test(ref) ? check(await ctx.db.from("partidas").select("id, code, short_description, unit, trade_id, organization_id, active").eq("region_id", ctx.studio.regionId).eq("code", rows[0].code)) : rows;
+  const pick = effectiveCatalogue(sameCode, ctx.studio.id, { includeHidden: true })[0];
+  if (!pick || pick.hidden) throw new ToolError(`${rows[0].code} is hidden in this studio's catalogue.`);
   return pick;
 }
 
@@ -243,13 +247,18 @@ const READ: ToolDef[] = [
     inputSchema: schema({ query: P("Code or words, e.g. 'alicatado' or 'REV-0'"), chapter: P("Chapter code or name") }, ["query"]),
     run: async (a, ctx) => {
       const query = str(a, "query", true).replace(/[,()]/g, "");
-      let q = ctx.db.from("partidas").select("id, code, short_description, unit, organization_id, trades(code, name)").eq("region_id", ctx.studio.regionId).eq("active", true).or(`code.ilike.%${query}%,short_description.ilike.%${query}%`).order("code").limit(40);
+      let q = ctx.db.from("partidas").select("id, code, short_description, unit, trade_id, active, organization_id, trades(code, name)").eq("region_id", ctx.studio.regionId).or(`code.ilike.%${query}%,short_description.ilike.%${query}%`).order("code").limit(40);
       const ch = str(a, "chapter");
       if (ch) q = q.eq("trade_id", (await trade(ctx, ch)).id);
       const [rows, prices] = await Promise.all([q, bestPrices(ctx)]);
-      return check(rows).map((r) => {
+      // Fetch every partida sharing a matched code, so a studio version always replaces the standard one.
+      const codes = [...new Set(check(rows).map((r) => r.code))];
+      const all = codes.length
+        ? check(await ctx.db.from("partidas").select("id, code, short_description, unit, trade_id, active, organization_id, trades(code, name)").eq("region_id", ctx.studio.regionId).in("code", codes))
+        : [];
+      return effectiveCatalogue(all, ctx.studio.id).map((r) => {
         const p = prices.get(r.id);
-        return { code: r.code, description: r.short_description, unit: r.unit, chapter: r.trades?.name, studio_own: r.organization_id === ctx.studio.id, price: p ? { unit_price: Number(p.unit_price), source: p.source, confidence: p.confidence, priced_on: p.priced_on } : null };
+        return { code: r.code, description: r.short_description, unit: r.unit, chapter: r.trades?.name, studio_version: r.kind !== "standard", price: p ? { unit_price: Number(p.unit_price), source: p.source, confidence: p.confidence, priced_on: p.priced_on } : null };
       });
     },
   },

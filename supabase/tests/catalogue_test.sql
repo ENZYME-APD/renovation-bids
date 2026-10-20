@@ -72,6 +72,39 @@ exception when others then
   perform pg_temp.check(true, 'B cannot add rooms to A''s version (' || sqlerrm || ')');
 end $$;
 select pg_temp.check((select count(*) = 10 from public.room_templates), 'B sees the shared templates');
+
+-- Studio catalogue: A customises one standard partida and hides another
+select set_config('request.jwt.claim.sub', 'aaaaaaaa-0000-0000-0000-000000000001', false);
+do $$
+declare
+  v_org uuid := current_setting('test.org_a')::uuid;
+  v_project uuid;
+  v_version uuid;
+  v_own uuid;
+  std record;
+begin
+  select * into std from public.partidas where code = 'REV-010' and organization_id is null;
+  insert into public.partidas (region_id, organization_id, code, short_description, unit, trade_id)
+  values ('es', v_org, 'REV-010', 'Alicatado Enzyme (porcelánico 60×120)', std.unit, std.trade_id) returning id into v_own;
+  insert into public.prices (region_id, organization_id, partida_id, unit_price, source, confidence)
+  values ('es', v_org, v_own, 120, 'manual', 'high');
+  insert into public.partidas (region_id, organization_id, code, short_description, unit, trade_id, active)
+  select 'es', v_org, code, short_description, unit, trade_id, false from public.partidas where code = 'SAN-010' and organization_id is null;
+
+  perform pg_temp.check(public.studio_partida(v_org, std.id) = v_own, 'studio version replaces the standard partida');
+  insert into public.projects (organization_id, name, status) values (v_org, 'Custom catalogue', 'pricing') returning id into v_project;
+  insert into public.versions (organization_id, project_id, label) values (v_org, v_project, 'A') returning id into v_version;
+  perform public.apply_room_template(v_version, (select id from public.room_templates where code = 'BAN'), 5, null);
+  perform pg_temp.check((select partida_id = v_own and unit_price = 120 from public.line_items li
+                          where li.version_id = v_version and li.partida_id in (v_own, std.id)), 'template uses the studio version and its price');
+  perform pg_temp.check((select count(*) = 0 from public.line_items li join public.partidas p on p.id = li.partida_id
+                          where li.version_id = v_version and p.code = 'SAN-010'), 'hidden partida skipped by the template');
+end $$;
+-- B still gets the standard ones
+select set_config('request.jwt.claim.sub', 'bbbbbbbb-0000-0000-0000-000000000002', false);
+select pg_temp.check((select public.studio_partida(current_setting('test.org_b')::uuid, id) = id from public.partidas where code = 'REV-010' and organization_id is null),
+                     'other studios keep the standard partida');
+select pg_temp.check((select count(*) = 0 from public.partidas where organization_id = current_setting('test.org_a')::uuid), 'B cannot see A''s partidas');
 reset role;
 
 \echo 'CATALOGUE TESTS PASSED'

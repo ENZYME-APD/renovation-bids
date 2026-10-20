@@ -1849,6 +1849,10 @@ export type Database = {
         Args: { p_po_line: string }
         Returns: string
       }
+      studio_partida: {
+        Args: { p_org: string; p_partida: string }
+        Returns: string
+      }
       undo_change: {
         Args: { p_change_id: string }
         Returns: number

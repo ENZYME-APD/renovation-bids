@@ -6,6 +6,7 @@ import { humanize, money, unitLabel } from "@/lib/format";
 import { Constants } from "@/lib/database.types";
 import { updateVersionStatus } from "./actions";
 import { AddButtons } from "./add-buttons";
+import { effectiveCatalogue } from "@/lib/catalogue";
 import { LineTable, type Group, type Line } from "./line-table";
 
 export default async function VersionPage({ params, searchParams }: PageProps<"/projects/[id]/versions/[versionId]">) {
@@ -29,8 +30,7 @@ export default async function VersionPage({ params, searchParams }: PageProps<"/
       .order("created_at", { ascending: true }),
     supabase
       .from("partidas")
-      .select("id, code, short_description, unit, trades(code, name, sequence)")
-      .eq("active", true)
+      .select("id, code, short_description, unit, trade_id, organization_id, active, trades(code, name, sequence)")
       .order("code"),
     supabase.rpc("current_prices", { p_org: studio.id }),
     supabase
@@ -87,7 +87,7 @@ export default async function VersionPage({ params, searchParams }: PageProps<"/
 
   // Partida picker, grouped by trade.
   const picker = new Map<string, { trade: string; sequence: number; partidas: { id: string; code: string; description: string; unit: string; price: number | null }[] }>();
-  for (const p of partidasRes.data) {
+  for (const p of effectiveCatalogue(partidasRes.data, studio.id)) {
     const trade = p.trades ? (p.trades.code ? `${p.trades.code} · ${p.trades.name}` : p.trades.name) : "Other";
     if (!picker.has(trade)) picker.set(trade, { trade, sequence: p.trades?.sequence ?? 999, partidas: [] });
     picker.get(trade)!.partidas.push({
