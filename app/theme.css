@@ -17,6 +17,7 @@
   /* Brand */
   --accent: light-dark(#b0452f, #e07a5f);       /* primary actions, highlights */
   --accent-ink: light-dark(#f4f1ea, #1c2321);   /* text on accent */
+  --accent-soft: light-dark(#f3e4dc, #2d2420);  /* tinted backgrounds: group headers, selection */
 
   /* Status */
   --ok: light-dark(#2f6f73, #79b8bb);
