@@ -1,7 +1,7 @@
 "use client";
 
 import { ActionForm } from "@/components/action-form";
-import { saveAiRules, saveProfile, saveStudio, invite, undoChange } from "./actions";
+import { saveAiRules, saveProfile, saveStudio, invite, setPassword, undoChange } from "./actions";
 
 const CURRENCIES = ["EUR", "GBP", "USD", "CHF", "MXN", "COP", "CLP", "ARS"];
 
@@ -120,6 +120,25 @@ export function UndoButton({ changeId }: { changeId: string }) {
   return (
     <ActionForm action={undoChange} submit="Undo" quiet>
       <input type="hidden" name="change_id" value={changeId} />
+    </ActionForm>
+  );
+}
+
+export function PasswordForm({ highlight }: { highlight?: boolean }) {
+  return (
+    <ActionForm action={setPassword} submit="Save password" className="grid max-w-md gap-4">
+      <h3 className="font-medium">Password</h3>
+      {highlight && <p className="text-sm text-accent">Choose a new password.</p>}
+      <p className="text-sm text-muted">Optional. Lets you sign in without waiting for an email. Google sign-in works either way.</p>
+      <input type="hidden" name="username" autoComplete="username" />
+      <label>
+        <span className="label">New password</span>
+        <input className="input" name="password" type="password" autoComplete="new-password" minLength={10} required />
+      </label>
+      <label>
+        <span className="label">Repeat it</span>
+        <input className="input" name="confirm" type="password" autoComplete="new-password" minLength={10} required />
+      </label>
     </ActionForm>
   );
 }
