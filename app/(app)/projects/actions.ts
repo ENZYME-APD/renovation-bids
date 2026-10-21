@@ -121,3 +121,52 @@ function checkCode(code: string) {
   if (!/^[\p{L}\p{N}][\p{L}\p{N} ._\-/]*$/u.test(code)) return "Use letters, numbers, spaces and . _ - / only.";
   return null;
 }
+
+/** Edit a project's details after creation. Client is matched by name in the studio, or created. */
+export async function updateProjectDetails(_prev: string | null, fd: FormData): Promise<string | null> {
+  const studio = await requireWriter();
+  const supabase = await createClient();
+  const id = String(fd.get("id"));
+  const name = String(fd.get("name") ?? "").trim();
+  if (!name) return "Give the project a name.";
+  const code = normaliseCode(fd.get("code"));
+  if (!code) return "Enter a project code.";
+  const codeErr = checkCode(code);
+  if (codeErr) return codeErr;
+  const rawHeight = String(fd.get("room_height") ?? "").trim().replace(",", ".");
+  const height = rawHeight === "" ? null : Number(rawHeight);
+  if (height != null && (!Number.isFinite(height) || height < 1.8 || height > 8)) return "Room height should be between 1.8 and 8 m.";
+  const year = toNumber(fd.get("year"));
+  if (year != null && (year < 1000 || year > 2100)) return "Year built looks wrong.";
+
+  let clientId: string | null = null;
+  const clientName = String(fd.get("client") ?? "").trim();
+  if (clientName) {
+    const { data: existing } = await supabase.from("clients").select("id").eq("organization_id", studio.id).ilike("name", clientName).limit(1);
+    if (existing?.length) clientId = existing[0].id;
+    else {
+      const { data, error } = await supabase.from("clients").insert({ organization_id: studio.id, name: clientName }).select("id").single();
+      if (error) return error.message;
+      clientId = data.id;
+    }
+  }
+
+  const { error } = await supabase
+    .from("projects")
+    .update({
+      code,
+      name,
+      client_id: clientId,
+      district: String(fd.get("district") ?? "").trim() || null,
+      address: String(fd.get("address") ?? "").trim() || null,
+      area_m2: toNumber(fd.get("area")),
+      building_year: year,
+      client_budget: toNumber(fd.get("budget")),
+      room_height: height,
+    })
+    .eq("id", id);
+  if (error) return error.code === "23505" ? `${code} is already used by another project.` : error.message;
+  revalidatePath(`/projects/${id}`);
+  revalidatePath("/projects");
+  return null;
+}

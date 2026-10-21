@@ -3,15 +3,15 @@ import { PageIntro } from "@/components/page-intro";
 import { humanize } from "@/lib/format";
 import { Constants } from "@/lib/database.types";
 import { STATUS_COLOR } from "@/lib/status";
-import { setProjectRoomHeight, updateProjectStatus } from "../actions";
+import { updateProjectStatus } from "../actions";
 import { PhaseStepper } from "./lifecycle";
-import { ProjectCode } from "./project-code";
+import { EditProjectButton, type EditableProject } from "./edit-project";
 
 type P = { id: string; code: string; name: string; status: string; phase: string; room_height: number | null };
 
 /** Project header: what the project is on the left; phase, status and the way into purchasing on the right. */
-export function ProjectHeader({ project, facts, canWrite, defaultRoomHeight }: {
-  project: P; facts: [string, string | null][]; canWrite: boolean; defaultRoomHeight: number;
+export function ProjectHeader({ project, facts, canWrite, defaultRoomHeight, editable }: {
+  project: P; facts: [string, string | null][]; canWrite: boolean; defaultRoomHeight: number; editable: EditableProject;
 }) {
   return (
       <div className="space-y-3">
@@ -20,11 +20,12 @@ export function ProjectHeader({ project, facts, canWrite, defaultRoomHeight }: {
           {/* Left: what the project is */}
           <div className="p-6">
             <div className="flex flex-wrap items-center gap-3">
-              <ProjectCode id={project.id} code={project.code} canWrite={canWrite} />
+              <span className="font-mono text-xs text-muted">{project.code}</span>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-line px-2 py-0.5 text-xs">
                 <span className="inline-block size-2 rounded-full" style={{ background: STATUS_COLOR[project.status] }} />
                 {humanize(project.status)}
               </span>
+              {canWrite && <span className="ml-auto"><EditProjectButton project={editable} defaultRoomHeight={defaultRoomHeight} /></span>}
             </div>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight">{project.name}</h1>
             <PageIntro wiki="project-lifecycle">
@@ -40,17 +41,7 @@ export function ProjectHeader({ project, facts, canWrite, defaultRoomHeight }: {
               <div>
                 <dt className="text-xs text-muted">Room height</dt>
                 <dd className="mt-0.5">
-                  {canWrite ? (
-                    <form action={setProjectRoomHeight} className="flex items-center gap-1">
-                      <input type="hidden" name="id" value={project.id} />
-                      <input name="room_height" inputMode="decimal" defaultValue={project.room_height ?? ""} placeholder={defaultRoomHeight.toFixed(2)}
-                        className="input w-20 px-2 py-0.5 text-sm" aria-label="Room height in metres" />
-                      <span className="text-xs text-muted">m</span>
-                      <button className="btn-quiet px-2 py-0.5 text-xs">Set</button>
-                    </form>
-                  ) : (
-                    `${Number(project.room_height ?? defaultRoomHeight).toFixed(2)} m`
-                  )}
+                  {project.room_height != null ? `${Number(project.room_height).toFixed(2)} m` : <span className="text-muted">{defaultRoomHeight.toFixed(2)} m (studio)</span>}
                 </dd>
               </div>
             </dl>

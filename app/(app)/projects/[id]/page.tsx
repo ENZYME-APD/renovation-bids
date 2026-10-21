@@ -110,6 +110,10 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
         facts={facts.map(([k, v]) => [k, v == null ? null : String(v)] as [string, string | null])}
         canWrite={studio.canWrite}
         defaultRoomHeight={studio.defaultRoomHeight}
+        editable={{
+          id: project.id, code: project.code, name: project.name, client: project.clients?.name ?? null, district: project.district,
+          address: project.address, area: project.area_m2, year: project.building_year, budget: project.client_budget, roomHeight: project.room_height,
+        }}
       />
 
       {contractSigned && summary ? (
