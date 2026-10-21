@@ -7,7 +7,7 @@
 | Tab | What's there |
 |---|---|
 | **Profile** | Your name, language, password (optional, for signing in without email) |
-| **Studio** | Name, currency, language of offers, default contingency (7%) and VAT (10%), default room height (2.60 m; a project can set its own), and whether options are allowed during the bid (off by default) |
+| **Studio** | Name, currency, language of offers, default contingency (7%) and VAT (10%), default room height (2.60 m; a project can set its own), company email domain (colleagues on it join without an invitation), and whether options are allowed during the bid (off by default) |
 | **Team** | Members and their roles, invitations by link |
 | **AI access** | Assistant address, who may connect, who may let it change things, your connected apps, recent AI changes |
 | **Activity** | Every change in the studio, with undo |

@@ -16,3 +16,12 @@ export async function createStudio(_prev: string | null, formData: FormData): Pr
   if (error) return error.message;
   redirect("/dashboard");
 }
+
+export async function joinStudio(_prev: string | null, formData: FormData): Promise<string | null> {
+  await getUser();
+  if (await getStudio()) redirect("/dashboard");
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("join_studio_by_domain", { p_org: String(formData.get("org_id")) });
+  if (error) return error.message;
+  redirect("/dashboard");
+}

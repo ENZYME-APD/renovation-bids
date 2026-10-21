@@ -612,6 +612,7 @@ export type Database = {
           default_contingency_pct: number
           default_room_height: number
           default_vat_pct: number
+          email_domain: string | null
           id: string
           language: string
           name: string
@@ -629,6 +630,7 @@ export type Database = {
           default_contingency_pct?: number
           default_room_height?: number
           default_vat_pct?: number
+          email_domain?: string | null
           id?: string
           language?: string
           name: string
@@ -646,6 +648,7 @@ export type Database = {
           default_contingency_pct?: number
           default_room_height?: number
           default_vat_pct?: number
+          email_domain?: string | null
           id?: string
           language?: string
           name?: string
@@ -2181,6 +2184,18 @@ export type Database = {
           expired: boolean
           role: Database["public"]["Enums"]["member_role"]
           studio: string
+        }[]
+      }
+      join_studio_by_domain: {
+        Args: { p_org: string }
+        Returns: string
+      }
+      joinable_studios: {
+        Args: never
+        Returns: {
+          email_domain: string
+          id: string
+          name: string
         }[]
       }
       match_room_template: {
