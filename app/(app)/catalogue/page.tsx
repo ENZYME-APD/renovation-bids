@@ -7,7 +7,7 @@ export default async function CataloguePage() {
   const studio = await requireStudio();
   const supabase = await createClient();
 
-  const [tradesRes, partidasRes, currentRes, historyRes] = await Promise.all([
+  const [tradesRes, partidasRes, currentRes, historyRes, regionRes] = await Promise.all([
     supabase.from("trades").select("id, code, name, sequence, organization_id").eq("region_id", studio.regionId).eq("active", true).order("sequence"),
     supabase
       .from("partidas")
@@ -20,7 +20,11 @@ export default async function CataloguePage() {
       .order("priced_on", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(5000),
+    supabase.from("regions").select("settings").eq("id", studio.regionId).maybeSingle(),
   ]);
+  // Budget ranges: each line's total ± this share, by price confidence (region settings).
+  const raw = ((regionRes.data?.settings ?? {}) as { confidence_spread?: Record<string, number> }).confidence_spread ?? {};
+  const spread = { high: Number(raw.high ?? 0.05), medium: Number(raw.medium ?? 0.12), low: Number(raw.low ?? 0.25) };
   if (partidasRes.error) throw partidasRes.error;
 
   const current = new Map((currentRes.data ?? []).map((p) => [p.partida_id, p]));
@@ -59,10 +63,11 @@ export default async function CataloguePage() {
         <h1 className="text-2xl font-semibold">Catalogue</h1>
         <p className="mt-1 max-w-2xl text-sm text-muted">
           The partidas you price with, by chapter. Standard partidas are shared; customise one to make your studio&apos;s own version of
-          that code, which then replaces it in budgets and room templates. Prices keep their history; the newest, most reliable one is used.
+          that code, which then replaces it in budgets and room templates. Hide the standard ones you never use. Prices keep their history;
+          the newest, most reliable one is used, and its confidence sets the low–high range budgets show.
         </p>
       </header>
-      <CatalogueTable items={items} chapters={chapters} currency={studio.currency} canWrite={studio.canWrite} />
+      <CatalogueTable items={items} chapters={chapters} currency={studio.currency} canWrite={studio.canWrite} spread={spread} />
     </div>
   );
 }
