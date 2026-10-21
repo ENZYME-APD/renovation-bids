@@ -4,7 +4,7 @@ import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { Modal } from "@/components/modal";
 import { ExportMenu } from "@/components/export-menu";
 import { humanize, unitLabel } from "@/lib/format";
-import { customise, deletePartida, deletePrice, savePartida, setActive, setPrice, type State } from "./actions";
+import { deletePartida, deletePrice, hideStandard, savePartida, setActive, setPrice, type State } from "./actions";
 
 export type PriceEntry = {
   id: string; unitPrice: number; source: string; confidence: string; pricedOn: string; validUntil: string | null; notes: string | null; own: boolean;
@@ -61,30 +61,36 @@ export function CatalogueTable({ items, chapters, currency, canWrite, spread }: 
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <input className="input w-64" placeholder="Search code or description" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search" />
-        <select className="input w-auto" value={chapter} onChange={(e) => setChapter(e.target.value)} aria-label="Chapter">
-          <option value="">All chapters</option>
-          {chapters.map((c) => <option key={c.id} value={c.id}>{c.code ? `${c.code} · ${c.name}` : c.name}</option>)}
-        </select>
-        <label className="flex items-center gap-2 text-sm text-muted" title="Standard partidas your studio has hidden, and your own partidas you have hidden">
-          <input type="checkbox" className="size-4 accent-[var(--accent)]" checked={showHidden} onChange={(e) => setShowHidden(e.target.checked)} disabled={!hiddenCount} />
-          Show hidden ({hiddenCount})
-        </label>
-        <span className="text-sm text-muted">{total} partidas</span>
-        <button
-          type="button"
-          onClick={() => setUnpricedOnly((v) => !v)}
-          aria-pressed={unpricedOnly}
-          className={`ml-auto text-sm ${unpricedOnly ? "font-medium text-accent" : "text-muted hover:text-ink"}`}
-        >
-          {unpricedOnly ? `Showing ${unpricedCount} without a price · Show all` : `Unpriced only (${unpricedCount})`}
-        </button>
-        <button type="button" className="text-sm text-muted hover:text-ink" onClick={() => setCollapsed(allCollapsed ? new Set() : new Set(groups.map((g) => g.chapter.id)))}>
-          {allCollapsed ? "Expand all" : "Collapse all"}
-        </button>
-        <ExportMenu href="/catalogue/export" />
-        {canWrite && <button className="btn" onClick={() => setModal({ type: "new" })}>+ New partida</button>}
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <input className="input w-64" placeholder="Search code or description" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search" />
+          <select className="input w-auto" value={chapter} onChange={(e) => setChapter(e.target.value)} aria-label="Chapter">
+            <option value="">All chapters</option>
+            {chapters.map((c) => <option key={c.id} value={c.id}>{c.code ? `${c.code} · ${c.name}` : c.name}</option>)}
+          </select>
+          <div className="ml-auto flex items-center gap-2">
+            <ExportMenu href="/catalogue/export" />
+            {canWrite && <button className="btn" onClick={() => setModal({ type: "new" })}>+ New partida</button>}
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-muted">
+          <span>{total} partidas</span>
+          <button
+            type="button"
+            onClick={() => setUnpricedOnly((v) => !v)}
+            aria-pressed={unpricedOnly}
+            className={unpricedOnly ? "font-medium text-accent" : "hover:text-ink"}
+          >
+            {unpricedOnly ? `Showing ${unpricedCount} without a price · Show all` : `Unpriced only (${unpricedCount})`}
+          </button>
+          <label className="flex items-center gap-2" title="Standard partidas your studio has hidden, and your own partidas you have hidden">
+            <input type="checkbox" className="size-4 accent-[var(--accent)]" checked={showHidden} onChange={(e) => setShowHidden(e.target.checked)} disabled={!hiddenCount} />
+            Show hidden ({hiddenCount})
+          </label>
+          <button type="button" className="hover:text-ink" onClick={() => setCollapsed(allCollapsed ? new Set() : new Set(groups.map((g) => g.chapter.id)))}>
+            {allCollapsed ? "Expand all" : "Collapse all"}
+          </button>
+        </div>
       </div>
 
       {groups.map(({ chapter: c, items: rows }) => {
@@ -140,11 +146,8 @@ export function CatalogueTable({ items, chapters, currency, canWrite, spread }: 
                       <td className="px-4 py-2">
                         <div className="flex flex-wrap justify-end gap-1.5">
                           <button className="btn-quiet py-1" onClick={() => setModal({ type: "price", item: i })}>{canWrite ? "Price" : "Prices"}</button>
-                          {canWrite && i.kind !== "standard" && <button className="btn-quiet py-1" onClick={() => setModal({ type: "edit", item: i })}>Edit</button>}
-                          {canWrite && i.kind === "standard" && (
-                            <InlineAction action={customise} fields={{ id: i.id }} label="Customise" />
-                          )}
-                          {canWrite && i.kind === "standard" && <InlineAction action={customise} fields={{ id: i.id, hide: "1" }} label="Hide" />}
+                          {canWrite && <button className="btn-quiet py-1" onClick={() => setModal({ type: "edit", item: i })}>Edit</button>}
+                          {canWrite && i.kind === "standard" && <InlineAction action={hideStandard} fields={{ id: i.id }} label="Hide" />}
                           {canWrite && i.kind !== "standard" && (
                             <InlineAction action={setActive} fields={{ id: i.id, active: i.hidden ? "1" : "0" }} label={i.hidden ? "Show" : "Hide"} />
                           )}
@@ -178,10 +181,11 @@ function PartidaForm({ item, chapters, defaultChapter, onDone }: { item?: Item; 
   useDone(pending, state, onDone);
   return (
     <form action={action} className="grid gap-4 sm:grid-cols-[10rem_1fr]">
-      {item && <input type="hidden" name="id" value={item.id} />}
+      {item && item.kind !== "standard" && <input type="hidden" name="id" value={item.id} />}
+      {item?.kind === "standard" && <input type="hidden" name="standard_id" value={item.id} />}
       <label>
         <span className="label">Code</span>
-        <input name="code" className="input font-mono uppercase" defaultValue={item?.code} required readOnly={item?.kind === "custom"} placeholder="REV-210" autoFocus={!item} />
+        <input name="code" className="input font-mono uppercase" defaultValue={item?.code} required readOnly={item?.kind === "custom" || item?.kind === "standard"} placeholder="REV-210" autoFocus={!item} />
       </label>
       <label>
         <span className="label">Short description</span>
@@ -208,7 +212,8 @@ function PartidaForm({ item, chapters, defaultChapter, onDone }: { item?: Item; 
         <span className="label">Reference code (optional, e.g. CYPE)</span>
         <input name="reference_code" className="input" defaultValue={item?.referenceCode ?? ""} />
       </label>
-      {item?.kind === "custom" && <p className="text-xs text-muted sm:col-span-2">This is your studio&apos;s version of a standard code, so the code stays the same.</p>}
+      {item?.kind === "custom" && <p className="text-xs text-muted sm:col-span-2">This is your studio&apos;s version of a standard code, so the code stays the same. Revert brings back the standard one.</p>}
+      {item?.kind === "standard" && <p className="text-xs text-muted sm:col-span-2">This is a shared standard partida. Saving makes it your studio&apos;s version (same code, your price carried over); other studios keep the standard.</p>}
       {!item && <p className="text-xs text-muted sm:col-span-2">Using the code of a standard partida makes this your studio&apos;s version of it.</p>}
       {state?.error && <p className="text-sm text-accent sm:col-span-2">{state.error}</p>}
       <div className="flex justify-end gap-2 sm:col-span-2">

@@ -25,13 +25,23 @@ const done = (ok: string): State => {
   return { ok };
 };
 
-/** Create or edit one of the studio's own partidas. */
+/** Create or edit one of the studio's own partidas. Editing a standard partida (standard_id)
+ *  creates the studio's version of it under the same code, carrying over the studio's latest price. */
 export async function savePartida(_p: State, fd: FormData): Promise<State> {
   const w = await writer();
   if ("error" in w) return w;
-  const code = s(fd, "code")?.toUpperCase();
   const short = s(fd, "short_description");
   const tradeId = s(fd, "trade_id");
+  const standardId = s(fd, "standard_id");
+  const supabase = await createClient();
+
+  let code = s(fd, "code")?.toUpperCase() ?? null;
+  let std: Database["public"]["Tables"]["partidas"]["Row"] | null = null;
+  if (standardId) {
+    std = (await supabase.from("partidas").select("*").eq("id", standardId).is("organization_id", null).maybeSingle()).data;
+    if (!std) return { error: "Standard partida not found." };
+    code = std.code;
+  }
   if (!code || !short || !tradeId) return { error: "Code, description and chapter are required." };
   const row = {
     code,
@@ -41,13 +51,37 @@ export async function savePartida(_p: State, fd: FormData): Promise<State> {
     trade_id: tradeId,
     reference_code: s(fd, "reference_code"),
   };
-  const supabase = await createClient();
   const id = s(fd, "id");
-  const { error } = id
-    ? await supabase.from("partidas").update(row).eq("id", id).eq("organization_id", w.orgId)
-    : await supabase.from("partidas").insert({ ...row, organization_id: w.orgId, region_id: w.regionId });
+  if (id) {
+    const { error } = await supabase.from("partidas").update(row).eq("id", id).eq("organization_id", w.orgId);
+    if (error) return { error: error.code === "23505" ? `Your studio already has a partida ${code}.` : error.message };
+    return done(`${code} saved.`);
+  }
+  const { data: created, error } = await supabase
+    .from("partidas")
+    .insert({
+      ...row,
+      organization_id: w.orgId,
+      region_id: w.regionId,
+      ...(std ? { archicad_classification: std.archicad_classification, archicad_filter: std.archicad_filter } : {}),
+    })
+    .select("id")
+    .single();
   if (error) return { error: error.code === "23505" ? `Your studio already has a partida ${code}.` : error.message };
-  return done(id ? `${code} saved.` : `${code} added.`);
+  if (std) await carryPrice(supabase, std.id, created.id, w.orgId, std.region_id);
+  return done(std ? `${code} saved as your studio's version.` : `${code} added.`);
+}
+
+async function carryPrice(supabase: Awaited<ReturnType<typeof createClient>>, fromId: string, toId: string, orgId: string, regionId: string) {
+  const { data: last } = await supabase
+    .from("prices")
+    .select("unit_price, source, confidence, priced_on, valid_until, notes")
+    .eq("partida_id", fromId)
+    .eq("organization_id", orgId)
+    .order("priced_on", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (last) await supabase.from("prices").insert({ ...last, organization_id: orgId, region_id: regionId, partida_id: toId });
 }
 
 /** Record a new price for a partida (keeps the history). */
@@ -82,8 +116,8 @@ export async function deletePrice(_p: State, fd: FormData): Promise<State> {
   return done("Price removed.");
 }
 
-/** Make a studio version of a standard partida (same code), carrying over the studio's latest price. */
-export async function customise(_p: State, fd: FormData): Promise<State> {
+/** Hide a standard partida: the studio gets an inactive version of that code. */
+export async function hideStandard(_p: State, fd: FormData): Promise<State> {
   const w = await writer();
   if ("error" in w) return w;
   const supabase = await createClient();
@@ -94,21 +128,13 @@ export async function customise(_p: State, fd: FormData): Promise<State> {
     .insert({
       organization_id: w.orgId, region_id: std.region_id, code: std.code, short_description: std.short_description,
       long_description: std.long_description, unit: std.unit, trade_id: std.trade_id, reference_code: std.reference_code,
-      archicad_classification: std.archicad_classification, archicad_filter: std.archicad_filter, active: fd.get("hide") !== "1",
+      archicad_classification: std.archicad_classification, archicad_filter: std.archicad_filter, active: false,
     })
     .select("id")
     .single();
   if (error) return { error: error.code === "23505" ? `Your studio already has its own ${std.code}.` : error.message };
-  const { data: last } = await supabase
-    .from("prices")
-    .select("unit_price, source, confidence, priced_on, valid_until, notes")
-    .eq("partida_id", std.id)
-    .eq("organization_id", w.orgId)
-    .order("priced_on", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (last) await supabase.from("prices").insert({ ...last, organization_id: w.orgId, region_id: std.region_id, partida_id: own.id });
-  return done(fd.get("hide") === "1" ? `${std.code} hidden.` : `${std.code} is now your studio's version. Edit it as you like.`);
+  await carryPrice(supabase, std.id, own.id, w.orgId, std.region_id);
+  return done(`${std.code} hidden.`);
 }
 
 /** Hide or show one of the studio's partidas (a hidden studio version also hides the standard one). */
