@@ -139,7 +139,7 @@ function refineTrade(trade: string, title: string) {
   if (!MIXED.has(trade)) return trade;
   return TITLE_MAP.find(([re]) => re.test(title))?.[1] ?? trade;
 }
-const SKIP_CHAPTER = /SERVICIOS DE ARQUITECTURA|PROJECT MANAGEMENT|HONORARIOS/i;
+const SKIP_CHAPTER = /SERVICIOS (DE )?ARQUITECTURA|PROJECT MANAGEMENT|HONORARIOS|DIRECCI[ÓO]N (DE )?OBRA/i;
 
 function fromPresupuesto(wb: ExcelJS.Workbook): ParsedBudget {
   const ev = evaluator(wb);
@@ -191,7 +191,9 @@ function fromPresupuesto(wb: ExcelJS.Workbook): ParsedBudget {
       if (inNotes) { generalNotes.push(code.replace(/^\*\s*/, "")); continue; }
       if (SKIP_CHAPTER.test(code)) { skipping = true; skipped.push(`${code}: separate contract, not imported`); continue; }
       skipping = false;
-      if (ROOM_CHAPTER.test(code) && trade === "ELE") { room = titleCase(code); continue; }
+      // A sub-chapter without its own amount inside a chapter is a room (Dormitorio, Despensa, Porche…)
+      const noAmount = num(at(C.contractor, r)) == null && num(at(C.owner, r)) == null;
+      if (trade && (noAmount || (ROOM_CHAPTER.test(code) && trade === "ELE"))) { room = titleCase(code); continue; }
       chapter = code;
       room = null;
       trade = CHAPTER_MAP.find(([re]) => re.test(code))?.[1] ?? "AYU";
