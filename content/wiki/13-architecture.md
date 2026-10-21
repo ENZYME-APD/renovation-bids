@@ -47,6 +47,10 @@ erDiagram
   PO_LINE }o--o| LINE_ITEM : "from budget"
   PROJECT ||--o{ SUPPLIER_INVOICE : bills
   PROJECT ||--o{ PAYMENT : money
+  PROJECT ||--o| VERSION : "contract (locked)"
+  PROJECT ||--o{ CHANGE_ORDER : changes
+  CHANGE_ORDER ||--o{ CO_LINE : lists
+  CHANGE_ORDER }o--o| DECISION : prices
   ORGANIZATION ||--o{ ACTIVITY_LOG : records
 ```
 
@@ -63,7 +67,11 @@ erDiagram
 
 | Rule | Where |
 |---|---|
-| One version until the project is won | Trigger on versions |
+| One version until the project is won (or past the bid phase) | Trigger on versions |
+| Winning moves a bid to design; lost or no-go closes it | Trigger on projects |
+| The signed contract version can't be edited or unlocked | Triggers on lines and versions; `sign_contract()` |
+| Decided change orders can't change; approving applies the client request | Triggers on change orders and their lines |
+| Current budget = contract + approved changes | `project_budget_summary`, `project_cost_by_trade` |
 | A request for quote needs a named approver before *sent* | Check constraint |
 | AI-read quote prices unused until reviewed | `current_prices()` |
 | Unanswered requests expire | Daily pg_cron job |
@@ -88,7 +96,7 @@ flowchart LR
 
 ## Testing
 
-- `supabase/tests/run_local.sh` runs the migrations on a local Postgres and checks **102** rules: tenant isolation, the bid flow, catalogue and templates, the activity log and undo, roles, purchasing and AI rules.
+- `supabase/tests/run_local.sh` runs the migrations on a local Postgres and checks **131** rules: tenant isolation, the bid flow, catalogue and templates, the activity log and undo, roles, purchasing, AI rules, and the lifecycle (contract lock, change orders, undo of a signing).
 - Type check, lint and production build before every merge. Screens are checked with screenshots in light and dark mode.
 
 ## Repository map

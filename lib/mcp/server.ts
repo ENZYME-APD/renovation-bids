@@ -8,11 +8,13 @@ import { TOOLS, ToolError } from "./tools";
 const SUPPORTED_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
 const SERVER_INFO = { name: "renovation-bids", title: "Renovation Bids", version: "0.1.0" };
 const ABOUT =
-  "Renovation Bids holds a studio's interior renovation bids in Spain: projects, budget versions made of priced partidas " +
-  "(a standard catalogue of work items with codes like DEM-040, grouped in chapters), room templates, client requests, " +
-  "suppliers and requests for quotes, and after a project is won its purchase orders, supplier invoices and payments. " +
-  "Call get_overview first. Amounts are in the studio currency it returns, before VAT unless stated. " +
-  "Rule of the studio: until a project is won, the bid has one generic version (no options or client variations).";
+  "This platform manages a studio's interior renovation projects in Spain through their whole life, in phases: " +
+  "bid (pre-contract, pre-design), design, construction and closed. Budgets are versions made of priced partidas " +
+  "(a standard catalogue of work items with codes like DEM-040, grouped in chapters) and room templates. When a project is won " +
+  "the signed contract freezes a copy of the budget as the baseline; after that, scope changes are change orders " +
+  "(current budget = contract + approved change orders). There are also client requests, suppliers and requests for quotes, " +
+  "purchase orders, supplier invoices and payments. Call get_overview first. Amounts are in the studio currency it returns, " +
+  "before VAT unless stated. Rule of the studio: until a project is won, the bid has one generic version (no options or client variations).";
 const READ_ONLY = " This connection is read-only.";
 const CAN_WRITE =
   " This connection can also make changes. Before changing anything, tell the user exactly what you will change and wait for them to confirm. " +

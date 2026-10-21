@@ -14,7 +14,7 @@ erDiagram
   PARTIDA ||--o{ PRICE : "has history"
 ```
 
-- A **version** (A, B…) is one complete budget. Before the contract there is only A (see [the bid workflow](/wiki/bid-workflow)).
+- A **version** (A, B…) is one complete budget. Before the contract there is only A (see [the project lifecycle](/wiki/project-lifecycle)). When the contract is signed, a locked **Contract** version is added: the baseline (see [Contract and change orders](/wiki/contract-and-change-orders)).
 - A **line** is one partida with a quantity, a unit price, a confidence, a state and optionally a **room**.
 - **Line total = quantity × unit price.** The budget range comes from each line's confidence (see [Pricing and ranges](/wiki/pricing-and-ranges)).
 

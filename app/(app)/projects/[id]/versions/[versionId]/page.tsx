@@ -19,7 +19,7 @@ export default async function VersionPage({ params, searchParams }: PageProps<"/
   const supabase = await createClient();
 
   const [{ data: version }, { data: project }] = await Promise.all([
-    supabase.from("versions").select("id, label, description, status, project_id").eq("id", versionId).maybeSingle(),
+    supabase.from("versions").select("id, label, description, status, project_id, locked").eq("id", versionId).maybeSingle(),
     supabase.from("projects").select("id, code, name").eq("id", projectId).maybeSingle(),
   ]);
   if (!version || !project || version.project_id !== project.id) notFound();
@@ -126,6 +126,12 @@ export default async function VersionPage({ params, searchParams }: PageProps<"/
             <p className="eyebrow">Version {version.label}</p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight">{version.description || "Budget"}</h1>
             <PageIntro wiki="budgets">Add rooms from templates and single lines, check the gaps with Incomplete only, and read it by chapter or by room. The range comes from each price&apos;s confidence.</PageIntro>
+            {version.locked && (
+              <p className="mt-3 rounded-md border-l-4 border-accent bg-accent-soft px-3 py-2 text-sm">
+                🔒 This is the signed contract: read-only, the baseline for cost control. Price changes as{" "}
+                <Link href={`/projects/${projectId}#change-orders`} className="text-accent underline">change orders</Link>.
+              </p>
+            )}
           </div>
           <form action={updateVersionStatus} className="flex items-end gap-2">
             {hidden}
@@ -197,14 +203,14 @@ export default async function VersionPage({ params, searchParams }: PageProps<"/
               {tab("room", "By room")}
             </div>
           </div>
-          {studio.canWrite && (
+          {studio.canWrite && !version.locked && (
             <div className="flex gap-2">
               <AddButtons projectId={projectId} versionId={versionId} templates={templatesRes.data ?? []} groups={pickerGroups} rooms={rooms} />
             </div>
           )}
         </div>
         {lines.length === 0 && <p className="text-sm text-muted">No lines yet. Add a room to fill in its standard items, or add partidas one by one.</p>}
-        <LineTable projectId={projectId} versionId={versionId} groups={lineGroups} groupBy={groupBy} rooms={rooms} canWrite={studio.canWrite} initialAudit={audit} />
+        <LineTable projectId={projectId} versionId={versionId} groups={lineGroups} groupBy={groupBy} rooms={rooms} canWrite={studio.canWrite && !version.locked} initialAudit={audit} />
       </section>
     </div>
   );

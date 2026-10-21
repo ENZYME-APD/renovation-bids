@@ -7,7 +7,7 @@
 | Tile | What it counts |
 |---|---|
 | Bids in progress | Projects from *lead* to *offer sent*, with the total of their budgets |
-| Won | Won projects and their contract value (or budget if no contract value yet) |
+| Won | Won projects and their contract value, plus how many are in design and on site |
 | Win rate | Won ÷ (won + lost) |
 | Average €/m² | Budget ÷ area, averaged over projects that have both |
 | Unpaid invoices | Supplier invoices still outstanding |
@@ -33,6 +33,7 @@ Generated automatically from your data. Click one to go where the work is.
 | Client request | A client request is still open | The project |
 | Invoice due | A supplier invoice with money outstanding is due within 7 days, or overdue | Purchases |
 | Late delivery | A sent or confirmed purchase order is past its expected date | Purchases |
+| Change order | A change order was sent to the client over a week ago and has no answer | The change order |
 
 Items disappear on their own once the data is fixed: price the lines and *"6 lines without a price"* goes away.
 

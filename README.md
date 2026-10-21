@@ -15,6 +15,7 @@ From site visit to a priced offer. Multi-tenant from day one: Enzyme is the firs
 | `/projects` | Project list and new project |
 | `/projects/[id]` | Project facts, status, versions with budget ranges, new version (empty or copied) |
 | `/projects/[id]/versions/[versionId]` | Budget editor: lines grouped by chapter or room, batch edit (state, confidence, room, price, quantity factor, delete, undo), add room / add line dialogs |
+| `/projects/[id]/changes/[coId]` | A change order: extra work and work taken out, send, client approval, frozen once decided |
 | `/projects/[id]/purchases` | Cost control by chapter, purchase orders from budget lines, supplier invoices, payments, "save as price" |
 | `/catalogue` | Partidas by chapter with current price and price history; new studio partidas, customise or hide standard ones, set prices |
 | `/wiki` | How the platform works: workflows, methods, diagrams and examples. Pages are Markdown in `content/wiki/` (NN-slug.md), with Mermaid diagrams |
@@ -73,7 +74,10 @@ All data access goes through the signed-in user's session, so the database's row
 | `…_roles_settings_activity.sql` | Viewer role, studio settings, profiles, invitations, activity log and undo |
 | `…_purchases_dashboard.sql` | Purchase orders, supplier invoices, payments, cost-control and dashboard views, action items |
 | `…_ai_access_rules.sql` | Studio AI rules enforced in the membership helpers |
-| `supabase/tests/` | Local test runner + 97 checks: tenant isolation, bid flow, catalogue, activity/undo, roles, purchasing, AI rules |
+| `…_catalogue_studio.sql` | Studio versions of standard partidas, hiding, `studio_partida()` |
+| `…_line_rooms.sql` | Rooms on budget lines |
+| `…_lifecycle.sql` | Phases, `sign_contract()` with a locked baseline, change orders, current budget views |
+| `supabase/tests/` | Local test runner + 131 checks: tenant isolation, bid flow, catalogue, activity/undo, roles, purchasing, AI rules, lifecycle |
 
 ## Rules the database enforces
 

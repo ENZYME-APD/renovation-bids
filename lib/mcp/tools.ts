@@ -182,7 +182,7 @@ const READ: ToolDef[] = [
     description: "Projects with status, area, budget of the main version (subtotal and low–high range, before VAT), €/m² and how many lines are priced.",
     inputSchema: schema({ status: P("Only this status", "string", { enum: PROJECT_STATUS }), search: P("Text in the code or name") }),
     run: async (a, ctx) => {
-      let q = ctx.db.from("project_stats").select("project_id, code, name, status, district, area_m2, version_label, subtotal, budget_low, budget_high, eur_per_m2, lines, priced_lines, contract_value, updated_at").order("updated_at", { ascending: false }).limit(200);
+      let q = ctx.db.from("project_stats").select("project_id, code, name, status, district, area_m2, version_label, subtotal, budget_low, budget_high, eur_per_m2, lines, priced_lines, contract_value, phase, updated_at").order("updated_at", { ascending: false }).limit(200);
       const status = oneOf(a, "status", PROJECT_STATUS);
       if (status) q = q.eq("status", status);
       const s = str(a, "search");
@@ -193,21 +193,29 @@ const READ: ToolDef[] = [
   {
     name: "get_project",
     title: "Get a project",
-    description: "A project with its client, versions and their totals, client requests, money summary and action items. project is the code (PRJ-0001), id or part of the name.",
+    description: "A project with its phase, client, versions and their totals, the signed contract and change orders (contract, approved and pending changes, current budget), client requests, money summary and action items. project is the code (PRJ-0001), id or part of the name.",
     inputSchema: schema({ project: P("Project code, id or name") }, ["project"]),
     run: async (a, ctx) => {
       const p = await project(ctx.db, str(a, "project", true));
       const [full, versions, decisions, money, actions] = await Promise.all([
         ctx.db.from("projects").select("*, clients(name, email, phone, client_type)").eq("id", p.id).single(),
-        ctx.db.from("versions").select("id, label, description, status, created_at").eq("project_id", p.id).order("label"),
+        ctx.db.from("versions").select("id, label, description, status, locked, created_at").eq("project_id", p.id).order("label"),
         ctx.db.from("decisions").select("id, request, status, source, requested_by, impact, decided_on").eq("project_id", p.id).order("decided_on", { ascending: false }),
         ctx.db.from("project_money").select("*").eq("project_id", p.id).maybeSingle(),
         ctx.db.from("action_items").select("kind, title, due_on, priority").eq("project_id", p.id),
       ]);
       const vs = check(versions);
       const totals = vs.length ? check(await ctx.db.from("version_totals").select("*").in("version_id", vs.map((v) => v.id))) : [];
+      const [summary, cos] = await Promise.all([
+        ctx.db.from("project_budget_summary").select("contract_budget, approved_changes, pending_changes, current_budget, contract_signed_on").eq("project_id", p.id).maybeSingle(),
+        ctx.db.from("change_order_totals").select("change_order_id, number, status, total, lines").eq("project_id", p.id).order("number"),
+      ]);
+      const coRows = check(cos);
+      const coInfo = coRows.length ? check(await ctx.db.from("change_orders").select("id, title, reason, approved_by, sent_on, decided_on").in("id", coRows.map((c) => c.change_order_id!))) : [];
       return {
         project: check(full),
+        contract: check(summary),
+        change_orders: coRows.map((c) => ({ ...coInfo.find((i) => i.id === c.change_order_id), number: `CO-${String(c.number).padStart(2, "0")}`, status: c.status, total: Number(c.total), lines: c.lines })),
         versions: vs.map((v) => ({ ...v, totals: totals.find((t) => t.version_id === v.id) ?? null })),
         client_requests: check(decisions),
         money: check(money),
@@ -336,6 +344,98 @@ const READ: ToolDef[] = [
 // ---------- write tools ----------
 
 const WRITE: ToolDef[] = [
+  {
+    name: "set_phase",
+    title: "Set a project's phase",
+    description: "Move a project to a phase: bid (pre-contract), design, construction or closed. Winning moves a bid to design on its own.",
+    writes: true,
+    inputSchema: schema({ project: P("Project code, id or name"), phase: P("Phase", "string", { enum: ["bid", "design", "construction", "closed"] }) }, ["project", "phase"]),
+    run: async (a, ctx) => {
+      const p = await project(ctx.db, str(a, "project", true));
+      const { db, changeId } = ctx.change();
+      const row = check(await db.from("projects").update({ phase: oneOf(a, "phase", ["bid", "design", "construction", "closed"] as const)! }).eq("id", p.id).select("code, phase, status").single());
+      return done(changeId, { project: row });
+    },
+  },
+  {
+    name: "sign_contract",
+    title: "Sign the contract",
+    description: "Record the signed contract: copies the chosen version as a locked 'Contract' baseline, marks the project won and moves it to design. contract_value defaults to the budget total.",
+    writes: true,
+    inputSchema: schema({ project: P("Project code, id or name"), version: P("Label of the version signed, e.g. A"), contract_value: P("Agreed value before VAT", "number"), signed_on: P("Date YYYY-MM-DD (default today)") }, ["project", "version"]),
+    run: async (a, ctx) => {
+      const p = await project(ctx.db, str(a, "project", true));
+      const v = await version(ctx.db, { project: p.id, version: str(a, "version", true) });
+      const { db, changeId } = ctx.change();
+      const id = check(await db.rpc("sign_contract", { p_project: p.id, p_version: v.id, p_value: num(a, "contract_value"), p_signed_on: date(a, "signed_on") ?? today() }));
+      const summary = check(await ctx.db.from("project_budget_summary").select("contract_budget, contract_value, contract_signed_on").eq("project_id", p.id).single());
+      return done(changeId, { contract_version_id: id, ...summary });
+    },
+  },
+  {
+    name: "create_change_order",
+    title: "Create a change order",
+    description: "After the contract: create a draft change order, optionally from a client request, with lines. Each line is a partida code (price defaults to the studio's best) or a free description with unit and unit_price. Negative quantity = work taken out.",
+    writes: true,
+    inputSchema: schema({
+      project: P("Project code, id or name"), title: P("Short title"), description: P("Description"),
+      reason: P("Reason", "string", { enum: ["client_request", "design_change", "site_condition", "omission", "other"] }),
+      client_request_id: P("Id of the client request it prices"),
+      lines: P("Lines", "array", { items: { type: "object", properties: { partida: { type: "string" }, description: { type: "string" }, quantity: { type: "number" }, unit: { type: "string", enum: UNITS }, unit_price: { type: "number" }, room: { type: "string" } } } }),
+    }, ["project", "title"]),
+    run: async (a, ctx) => {
+      const p = await project(ctx.db, str(a, "project", true));
+      const input = Array.isArray(a.lines) ? (a.lines as Json[]) : [];
+      const prices = input.length ? await bestPrices(ctx) : new Map();
+      const lines = await Promise.all(input.map(async (l) => {
+        const ref = str(l, "partida");
+        const pt = ref ? await partida(ctx, ref) : null;
+        const description = str(l, "description") ?? pt?.short_description;
+        if (!description) throw new ToolError("Each line needs a partida or a description.");
+        const quantity = num(l, "quantity", true);
+        if (quantity === 0) throw new ToolError("Quantities can't be 0.");
+        const unitPrice = num(l, "unit_price") ?? (pt ? Number(prices.get(pt.id)?.unit_price ?? NaN) : NaN);
+        if (!Number.isFinite(unitPrice)) throw new ToolError(`No price for ${pt?.code ?? description}; give unit_price.`);
+        return { partida_id: pt?.id ?? null, description, unit: (pt?.unit ?? oneOf(l, "unit", UNITS) ?? "ud") as Enums["unit"], quantity, unit_price: unitPrice, room: str(l, "room") ?? null };
+      }));
+      const { db, changeId } = ctx.change();
+      const co = check(await db.from("change_orders").insert({
+        organization_id: ctx.studio.id, project_id: p.id, title: str(a, "title", true), description: str(a, "description") ?? null,
+        reason: oneOf(a, "reason", ["client_request", "design_change", "site_condition", "omission", "other"] as const, a.client_request_id ? "client_request" : "other")!,
+        decision_id: str(a, "client_request_id") ?? null,
+      }).select("id, number, status").single());
+      if (lines.length) check(await db.from("change_order_lines").insert(lines.map((l) => ({ ...l, organization_id: ctx.studio.id, change_order_id: co.id }))));
+      const total = lines.reduce((t, l) => t + Math.round(l.quantity * l.unit_price * 100) / 100, 0);
+      return done(changeId, { change_order: { id: co.id, number: `CO-${String(co.number).padStart(2, "0")}`, status: co.status, total, lines: lines.length } });
+    },
+  },
+  {
+    name: "update_change_order",
+    title: "Update a change order",
+    description: "Move a change order on: sent (to the client), approved (needs approved_by, the client's name), rejected, draft or cancelled. Approved changes add to the current budget and freeze their lines.",
+    writes: true,
+    inputSchema: schema({
+      change_order_id: P("Change order id (from get_project)"), status: P("New status", "string", { enum: ["draft", "sent", "approved", "rejected", "cancelled"] }),
+      approved_by: P("Client person who approved"), date: P("Date of sending or decision YYYY-MM-DD (default today)"),
+    }, ["change_order_id", "status"]),
+    run: async (a, ctx) => {
+      const status = oneOf(a, "status", ["draft", "sent", "approved", "rejected", "cancelled"] as const)!;
+      const patch: Database["public"]["Tables"]["change_orders"]["Update"] = { status };
+      const d = date(a, "date") ?? today();
+      if (status === "sent") patch.sent_on = d;
+      if (status === "draft") patch.sent_on = null;
+      if (status === "approved" || status === "rejected") patch.decided_on = d;
+      if (status === "approved") {
+        const by = str(a, "approved_by");
+        if (!by) throw new ToolError("approved_by is required: who approved it on the client side?");
+        patch.approved_by = by;
+      }
+      const { db, changeId } = ctx.change();
+      const row = check(await db.from("change_orders").update(patch).eq("id", str(a, "change_order_id", true)).select("number, title, status").maybeSingle());
+      if (!row) throw new ToolError("No such change order, or you can't change it.");
+      return done(changeId, { change_order: { ...row, number: `CO-${String(row.number).padStart(2, "0")}` } });
+    },
+  },
   {
     name: "create_project",
     title: "Create a project",

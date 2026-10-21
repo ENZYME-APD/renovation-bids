@@ -43,4 +43,10 @@ The link only works for the email it was made for, and only once. See [Settings 
 5. Click **Incomplete only** and price what's missing (or mark it *needs quote*).
 6. The low–high range at the top is your bid range before VAT (see [Pricing and ranges](/wiki/pricing-and-ranges)). **Export → Excel** if you want to send it on.
 
-Next: [the bid workflow](/wiki/bid-workflow) in detail.
+## After you win
+
+7. Set the bid status to **won**, then **Sign contract…** on the project page: the budget is locked as the baseline and the project moves to **Design**.
+8. Record what the client asks for under **Client requests**, then **Price as change order** for each one. Send it, and record the approval.
+9. When works start, move the phase to **Construction** and use **Purchases and cost control**.
+
+Next: [the project lifecycle](/wiki/project-lifecycle) in detail.
