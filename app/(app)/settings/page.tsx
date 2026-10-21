@@ -63,6 +63,8 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
             vat={studio.vatPct}
             allowBidOptions={studio.allowBidOptions}
             roomHeight={studio.defaultRoomHeight}
+            emailDomain={studio.emailDomain}
+            myDomain={user.email.split("@")[1] ?? ""}
             disabled={!studio.isAdmin}
           />
         </section>

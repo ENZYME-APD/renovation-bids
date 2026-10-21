@@ -16,7 +16,10 @@ The app keeps you signed in on each browser until you sign out.
 
 ## Your studio
 
-The first person to sign in creates the **studio** (ENZYME APD) and becomes its **owner**. Everyone else joins by invitation:
+The first person to sign in creates the **studio** (ENZYME APD) and becomes its **owner**. Colleagues with a company email join in one of two ways:
+
+- **By domain** (simplest): an admin sets the company email domain in *Settings → Studio* (for us, *weareenzyme.com*). Anyone who signs in with a verified email on that domain sees **Join ENZYME APD** and joins as a *member*; an admin can change the role later.
+- **By invitation**, for anyone else (a freelancer, a consultant with another domain):
 
 ```mermaid
 sequenceDiagram

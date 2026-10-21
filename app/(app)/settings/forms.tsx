@@ -29,7 +29,7 @@ export function ProfileForm({ displayName, language, email }: { displayName: str
 }
 
 export function StudioForm(p: {
-  name: string; currency: string; language: string; contingency: number; vat: number; allowBidOptions: boolean; roomHeight: number; disabled: boolean;
+  name: string; currency: string; language: string; contingency: number; vat: number; allowBidOptions: boolean; roomHeight: number; emailDomain: string | null; myDomain: string; disabled: boolean;
 }) {
   return (
     <ActionForm action={saveStudio} submit="Save studio" className="grid max-w-md gap-4" disabled={p.disabled}>
@@ -66,6 +66,14 @@ export function StudioForm(p: {
           </label>
         </div>
         <p className="text-sm text-muted">Defaults apply to new versions. Reformas de vivienda usually take 10% VAT; commercial premises 21%.</p>
+        <label>
+          <span className="label">Company email domain</span>
+          <input className="input" name="email_domain" defaultValue={p.emailDomain ?? ""} placeholder={p.myDomain} />
+          <span className="mt-1 block text-sm text-muted">
+            Colleagues who sign in with a verified @{p.emailDomain || p.myDomain} email can join as members, without an invitation. Only your own
+            domain is accepted; leave empty to require invitations.
+          </span>
+        </label>
         <label className="flex items-start gap-3 rounded-lg border border-line p-3">
           <input type="checkbox" name="allow_bid_options" defaultChecked={p.allowBidOptions} className="mt-1" />
           <span>
