@@ -16,7 +16,7 @@ export default async function ProjectsPage({ searchParams }: PageProps<"/project
   const supabase = await createClient();
   const { data: projects, error } = await supabase
     .from("projects")
-    .select("id, code, name, district, status, phase, client_budget, updated_at, clients(name)")
+    .select("id, code, name, district, status, phase, updated_at, clients(name)")
     .eq("organization_id", studio.id)
     .order("updated_at", { ascending: false });
   if (error) throw error;
@@ -26,6 +26,14 @@ export default async function ProjectsPage({ searchParams }: PageProps<"/project
     .eq("organization_id", studio.id);
   const st = stats ?? [];
   const cur = studio.currency;
+  const areaOf = (pid: string) => {
+    const a = st.find((x) => x.project_id === pid)?.area_m2;
+    return a ? Number(a) : null;
+  };
+  const perM2Of = (pid: string) => {
+    const b = budgetOf(pid), a = areaOf(pid);
+    return b && a ? b / a : null;
+  };
   const budgetOf = (pid: string) => {
     const r = st.find((x) => x.project_id === pid);
     return r ? Number(r.contract_value ?? r.subtotal ?? 0) : null;
@@ -104,7 +112,8 @@ export default async function ProjectsPage({ searchParams }: PageProps<"/project
                 <th className="px-4 py-2 font-medium">Phase</th>
                 <th className="px-4 py-2 font-medium">Status</th>
                 <th className="px-4 py-2 text-right font-medium">Budget</th>
-                <th className="px-4 py-2 text-right font-medium">Client budget</th>
+                <th className="px-4 py-2 text-right font-medium">Area</th>
+                <th className="px-4 py-2 text-right font-medium">€/m²</th>
               </tr>
             </thead>
             <tbody>
@@ -122,7 +131,8 @@ export default async function ProjectsPage({ searchParams }: PageProps<"/project
                     {humanize(p.status)}
                   </td>
                   <td className="px-4 py-2 text-right tabular-nums">{budgetOf(p.id) ? money(budgetOf(p.id), cur) : "—"}</td>
-                  <td className="px-4 py-2 text-right tabular-nums">{money(p.client_budget)}</td>
+                  <td className="px-4 py-2 text-right tabular-nums text-muted">{areaOf(p.id) ? `${areaOf(p.id)} m²` : "—"}</td>
+                  <td className="px-4 py-2 text-right font-medium tabular-nums">{perM2Of(p.id) ? money(perM2Of(p.id), cur) : "—"}</td>
                 </tr>
               ))}
             </tbody>
