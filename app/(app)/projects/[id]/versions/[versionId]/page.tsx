@@ -38,11 +38,13 @@ export default async function VersionPage({ params, searchParams }: PageProps<"/
     supabase.rpc("current_prices", { p_org: studio.id }),
     supabase
       .rpc("effective_room_templates", { p_org: studio.id })
-      .select("id, code, name, size_label, description")
-      .eq("active", true)
-      .order("sequence"),
+      .select("id, code, name, size_label, description, sequence")
+      .eq("active", true),
   ]);
   if (linesRes.error) throw linesRes.error;
+  if (templatesRes.error) throw templatesRes.error;
+  // PostgREST cannot order a function's rows here, so sort in code.
+  const templates = [...(templatesRes.data ?? [])].sort((a, b) => a.sequence - b.sequence || a.name.localeCompare(b.name, "es"));
   if (partidasRes.error) throw partidasRes.error;
 
   const budget = budgetRes.data ?? [];
@@ -207,7 +209,7 @@ export default async function VersionPage({ params, searchParams }: PageProps<"/
           </div>
           {studio.canWrite && !version.locked && (
             <div className="flex gap-2">
-              <AddButtons projectId={projectId} versionId={versionId} templates={templatesRes.data ?? []} groups={pickerGroups} rooms={rooms} />
+              <AddButtons projectId={projectId} versionId={versionId} templates={templates} groups={pickerGroups} rooms={rooms} />
             </div>
           )}
         </div>

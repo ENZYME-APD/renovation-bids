@@ -9,10 +9,12 @@ export default async function TemplatesPage() {
   const supabase = await createClient();
 
   const [{ data: templates, error }, { data: standard }] = await Promise.all([
-    supabase.rpc("effective_room_templates", { p_org: studio.id }).order("sequence").order("name"),
+    supabase.rpc("effective_room_templates", { p_org: studio.id }),
     supabase.from("room_templates").select("code").is("organization_id", null).eq("region_id", studio.regionId),
   ]);
   if (error) throw error;
+  // PostgREST cannot order a function's rows here, so sort in code.
+  templates?.sort((a, b) => a.sequence - b.sequence || a.name.localeCompare(b.name, "es"));
   const ids = (templates ?? []).map((t) => t.id);
   const { data: lines } = ids.length
     ? await supabase.from("room_template_lines").select("template_id").in("template_id", ids)
