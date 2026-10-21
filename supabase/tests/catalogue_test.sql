@@ -40,7 +40,7 @@ begin
                         'bathroom template adds one line per item (' || n || ')');
   select li.quantity into v_tile from public.line_items li join public.partidas p on p.id = li.partida_id
    where li.version_id = v_version and p.code = 'REV-010';
-  perform pg_temp.check(v_tile = 18.5, 'wall tiling = 3.7 × 5 m² = 18.5 m²');
+  perform pg_temp.check(v_tile = round(public.estimate_perimeter(5) * 2.6, 3), 'wall tiling = estimated perimeter × 2.6 m (' || v_tile || ' m²)');
   perform pg_temp.check((select unit_price = 90 and state = 'priced' from public.line_items li join public.partidas p on p.id = li.partida_id
                           where li.version_id = v_version and p.code = 'REV-010'), 'line picks up the studio''s own price');
   perform pg_temp.check((select bool_and(room = 'Baño principal' and notes is null) from public.line_items where version_id = v_version), 'lines labelled with the room');

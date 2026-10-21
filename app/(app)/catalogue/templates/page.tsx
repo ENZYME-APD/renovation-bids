@@ -41,7 +41,7 @@ export default async function TemplatesPage() {
         <p className="eyebrow">{studio.name}</p>
         <h1 className="text-2xl font-semibold">Catalogue</h1>
         <PageIntro wiki="rooms-and-models">
-          A room template is a recipe: for each partida, quantity = factor × room size + fixed. Rooms from a model, a drawing or an AI room
+          A room template is a recipe: for each partida, quantity = a × floor area + b × perimeter + c × wall area + fixed. Rooms from a model, a drawing or an AI room
           list are matched to a template by name or zone category. Edit a standard template to make your studio&apos;s version.
         </PageIntro>
         <CatalogueTabs active="templates" />

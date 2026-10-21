@@ -1,5 +1,7 @@
 "use client";
 
+import { Modal } from "@/components/modal";
+import { EditRoomForm, roomSummary, type RoomInfo } from "./add-room-form";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { humanize, money2 } from "@/lib/format";
 import { Constants } from "@/lib/database.types";
@@ -23,12 +25,13 @@ export type Line = {
   updatedAt: string;
   source: string;
   overridden: boolean;
+  roomId?: string | null;
 };
 
 const SOURCE: Record<string, string> = {
   template: "from template", model_zone: "from model zone", model_element: "from model", ai_assumption: "AI assumption", import: "imported",
 };
-export type Group = { key: string; name: string; lines: Line[] };
+export type Group = { key: string; name: string; lines: Line[]; room?: RoomInfo };
 
 /** What's missing on a line, for the quick audit. Rooms only count once the budget uses them. */
 function issuesOf(l: Line, usesRooms: boolean): string[] {
@@ -48,6 +51,7 @@ export function LineTable({
   const [picked, setSelected] = useState<Set<string>>(new Set());
   const [result, setResult] = useState<BatchState>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [editingRoom, setEditingRoom] = useState<RoomInfo | null>(null);
   const [auditOnly, setAuditOnly] = useState(initialAudit);
   const usesRooms = useMemo(() => groups.some((g) => g.lines.some((l) => l.room)), [groups]);
   const issueCount = useMemo(() => groups.reduce((t, g) => t + g.lines.filter((l) => issuesOf(l, usesRooms).length).length, 0), [groups, usesRooms]);
@@ -142,6 +146,14 @@ export function LineTable({
                   </svg>
                   {g.name}
                 </button>
+                {g.room && (
+                  <span className="text-sm font-normal text-muted">
+                    {roomSummary(g.room)}
+                    {canWrite && (
+                      <button type="button" onClick={() => setEditingRoom(g.room!)} className="ml-2 text-accent hover:underline">Edit room</button>
+                    )}
+                  </span>
+                )}
                 <span className="text-sm font-normal text-muted">
                   · {g.lines.length} {g.lines.length === 1 ? "line" : "lines"}
                   {nSel > 0 && !open && ` · ${nSel} selected`}
@@ -257,6 +269,9 @@ export function LineTable({
           onUndo={(changeId) => run(() => undoBatch(projectId, versionId, changeId))}
         />
       )}
+      <Modal open={!!editingRoom} onClose={() => setEditingRoom(null)} title={editingRoom ? `Room · ${editingRoom.name}` : "Room"}>
+        {editingRoom && <EditRoomForm projectId={projectId} versionId={versionId} room={editingRoom} onDone={() => setEditingRoom(null)} />}
+      </Modal>
     </div>
   );
 }

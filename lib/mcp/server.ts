@@ -15,7 +15,8 @@ const ABOUT =
   "(current budget = contract + approved change orders). There are also client requests, suppliers and requests for quotes, " +
   "purchase orders, supplier invoices and payments. Call get_overview first. Amounts are in the studio currency it returns, " +
   "before VAT unless stated. Rule of the studio: until a project is won, the bid has one generic version (no options or client variations), unless the studio allows options in the bid. " +
-  "Quantities can come from any source (Archicad or other BIM, drawings, AI assumptions, or by hand): lines record their source, and lines edited by hand are marked overridden so syncs leave them alone.";
+  "Quantities can come from any source (Archicad or other BIM, drawings, AI assumptions, or by hand): lines record their source, and lines edited by hand are marked overridden so syncs leave them alone. " +
+  "Rooms have area, perimeter and height (from zones, a dimensioned sketch, or estimates): give them to add_room so walls, skirting and tiling are measured, not guessed.";
 const READ_ONLY = " This connection is read-only.";
 const CAN_WRITE =
   " This connection can also make changes. Before changing anything, tell the user exactly what you will change and wait for them to confirm. " +

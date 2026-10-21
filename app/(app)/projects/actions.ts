@@ -59,3 +59,16 @@ export async function updateProjectStatus(formData: FormData) {
   if (error) throw new Error(error.message);
   revalidatePath(`/projects/${id}`);
 }
+
+/** Room height for this project's new rooms; empty = the studio default. */
+export async function setProjectRoomHeight(formData: FormData) {
+  await requireWriter();
+  const supabase = await createClient();
+  const id = String(formData.get("id"));
+  const raw = String(formData.get("room_height") ?? "").trim().replace(",", ".");
+  const h = raw === "" ? null : Number(raw);
+  if (h != null && (!Number.isFinite(h) || h < 1.8 || h > 8)) throw new Error("Height should be between 1.8 and 8 m.");
+  const { error } = await supabase.from("projects").update({ room_height: h }).eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/projects/${id}`);
+}

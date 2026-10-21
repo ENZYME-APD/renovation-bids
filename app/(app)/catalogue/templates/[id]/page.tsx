@@ -20,7 +20,7 @@ export default async function TemplatePage({ params }: PageProps<"/catalogue/tem
   const [linesRes, partidasRes, pricesRes, standardRes] = await Promise.all([
     supabase
       .from("room_template_lines")
-      .select("id, factor, fixed, note, sequence, partidas(id, code, short_description, unit, trades(code, name, sequence))")
+      .select("id, factor, per_perimeter, per_wall_area, fixed, note, sequence, partidas(id, code, short_description, unit, trades(code, name, sequence))")
       .eq("template_id", id)
       .order("sequence"),
     supabase
@@ -45,6 +45,8 @@ export default async function TemplatePage({ params }: PageProps<"/catalogue/tem
     unit: l.partidas?.unit ?? "",
     chapter: l.partidas?.trades?.code ?? "",
     factor: Number(l.factor),
+    perPerimeter: Number(l.per_perimeter),
+    perWallArea: Number(l.per_wall_area),
     fixed: Number(l.fixed),
     note: l.note,
     price: priceByCode.get(l.partidas?.code ?? "") ?? null,
@@ -79,6 +81,7 @@ export default async function TemplatePage({ params }: PageProps<"/catalogue/tem
         editable={editable}
         canWrite={studio.canWrite}
         currency={studio.currency}
+        defaultHeight={studio.defaultRoomHeight}
       />
     </div>
   );

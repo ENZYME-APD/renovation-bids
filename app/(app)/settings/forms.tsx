@@ -29,7 +29,7 @@ export function ProfileForm({ displayName, language, email }: { displayName: str
 }
 
 export function StudioForm(p: {
-  name: string; currency: string; language: string; contingency: number; vat: number; allowBidOptions: boolean; disabled: boolean;
+  name: string; currency: string; language: string; contingency: number; vat: number; allowBidOptions: boolean; roomHeight: number; disabled: boolean;
 }) {
   return (
     <ActionForm action={saveStudio} submit="Save studio" className="grid max-w-md gap-4" disabled={p.disabled}>
@@ -59,6 +59,10 @@ export function StudioForm(p: {
           <label>
             <span className="label">Default VAT %</span>
             <input className="input" name="vat" type="number" step="0.5" min="0" defaultValue={p.vat} />
+          </label>
+          <label>
+            <span className="label">Default room height (m)</span>
+            <input className="input" name="room_height" type="number" step="0.05" min="1.8" max="8" defaultValue={p.roomHeight} />
           </label>
         </div>
         <p className="text-sm text-muted">Defaults apply to new versions. Reformas de vivienda usually take 10% VAT; commercial premises 21%.</p>

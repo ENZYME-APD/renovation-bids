@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/dal";
 import { humanize, money } from "@/lib/format";
 import { Constants } from "@/lib/database.types";
-import { updateProjectStatus } from "../actions";
+import { setProjectRoomHeight, updateProjectStatus } from "../actions";
 import { NewVersionForm } from "./new-version-form";
 import { ClientRequests, NewChangeOrderButton, PhaseStepper, SignContractButton } from "./lifecycle";
 import { VersionCompare, type CompareLine } from "./version-compare";
@@ -19,7 +19,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
 
   const { data: project } = await supabase
     .from("projects")
-    .select("id, code, name, address, district, area_m2, building_year, status, phase, client_budget, contract_value, contract_signed_on, contract_version_id, clients(name)")
+    .select("id, code, name, address, district, area_m2, building_year, room_height, status, phase, client_budget, contract_value, contract_signed_on, contract_version_id, clients(name)")
     .eq("id", id)
     .maybeSingle();
   if (!project) notFound();
@@ -132,6 +132,22 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
               <dd className="mt-0.5">{v ?? "—"}</dd>
             </div>
           ))}
+          <div>
+            <dt className="text-xs text-muted">Room height</dt>
+            <dd className="mt-0.5">
+              {studio.canWrite ? (
+                <form action={setProjectRoomHeight} className="flex items-center gap-1">
+                  <input type="hidden" name="id" value={project.id} />
+                  <input name="room_height" inputMode="decimal" defaultValue={project.room_height ?? ""} placeholder={`${studio.defaultRoomHeight.toFixed(2)} (studio)`}
+                    className="input w-28 py-0.5 text-sm" aria-label="Room height in metres" />
+                  <span className="text-xs text-muted">m</span>
+                  <button className="btn-quiet px-2 py-0.5 text-xs">Set</button>
+                </form>
+              ) : (
+                `${Number(project.room_height ?? studio.defaultRoomHeight).toFixed(2)} m`
+              )}
+            </dd>
+          </div>
         </dl>
       </div>
 

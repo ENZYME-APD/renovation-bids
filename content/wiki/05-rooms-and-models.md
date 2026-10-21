@@ -23,15 +23,37 @@ flowchart TB
 
 | Source | Typical moment | How it reaches the budget |
 |---|---|---|
-| **Archicad** | Bid (quick model from a scan) and design | Claude reads zones through Tapir and adds rooms with *source: model zone* and the zone id |
+| **Archicad** | Bid (quick model from a scan) and design | Claude reads zones through Tapir (area, perimeter, height, openings) and adds rooms with *source: model zone* and the zone id |
 | **Other BIM / CAD** | Any | Export a zone or room schedule; Claude adds the rooms with *source: import* |
-| **Drawings only** | Bid on an existing flat | Areas from the plan, added as rooms by hand or by Claude |
+| **Drawings only** | Bid on an existing flat | Claude reads a dimensioned sketch or plan and works out each room's area, perimeter and openings |
 | **AI assumptions** | First call, before a visit | Claude estimates rooms from photos or a description, marked *AI assumption* so nobody mistakes them for measured |
 | **By hand** | Any | **+ Add room** in the budget |
 
+## Room geometry
+
+Every room has three measurements, and each partida scales with the one that drives it:
+
+| Measurement | Drives | Where it comes from |
+|---|---|---|
+| **Floor area** | flooring, ceilings, waterproofing | zone area, plan, laser |
+| **Perimeter** | skirting, cornices | zone perimeter, plan dimensions |
+| **Height** | with the perimeter, the **wall area** (paint, tiling) | zone height, section, laser; else project or studio default |
+| Doors and windows | deducted from the wall area | openings in the zone's walls, plan |
+
+| Source | Area | Perimeter | Height |
+|---|---|---|---|
+| Archicad zone | ✓ | ✓ | ✓ |
+| Dimensioned plan sketch (photo or PDF) | Claude works it out | Claude works it out | if noted on the sketch, else default |
+| Site measurements | ✓ | ✓ | ✓ |
+| Area only | ✓ | *estimated* (1:1.5 rectangle) | *default* |
+
+Estimated and default values are labelled in the room header, so a budget built from guesses never looks measured.
+
+**Why not a ratio to the floor?** The old templates used, for example, 0.9 m of skirting per m² of floor (the Ortega y Gasset 47 average). A 10 m² bedroom has about 12.9 m of perimeter, so the ratio fell 30 % short. Small rooms and tall ceilings were always wrong.
+
 ## Room templates
 
-**Catalogue → Room templates** lists the recipes. For each partida: **quantity = factor × room size + fixed**.
+**Catalogue → Room templates** lists the recipes. For each partida: **quantity = a × floor area + b × perimeter + c × wall area + fixed**.
 
 - **Edit** a standard template to make your studio's version (same code). Your budgets use yours from then on; *Reset to standard* brings the original back.
 - **+ New template** for rooms you cost often that have no standard (terrace, dressing room, home office).

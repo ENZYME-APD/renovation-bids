@@ -20,20 +20,21 @@ erDiagram
 
 ## Rooms and templates
 
-A **room template** is a recipe: for each partida, **quantity = factor × size + fixed**.
+A **room** has a floor area, a perimeter and a height. A **room template** is a recipe: for each partida,
+**quantity = a × floor area + b × perimeter + c × wall area + fixed**, where **wall area = perimeter × height − doors and windows**.
 
-**Example: *Baño completo con ducha*, 5 m² of floor**
+**Example: *Baño completo con ducha*, 5 m² of floor, 2.2 × 2.3 m (perimeter 9 m), 2.5 m high, one door (1.6 m²)**
 
 | Partida | Rule | Quantity | Price | Total |
 |---|---|---|---|---|
-| IMP-010 Impermeabilización de suelo en zona húmeda | 1.0 × size | 5 m² | — | needs a price |
-| PAV-020 Solado de gres porcelánico | 1.0 × size | 5 m² | 86 € | 430 € |
-| REV-010 Alicatado de gres porcelánico | **3.7** × size | 18.5 m² | 90 € | 1 665 € |
-| TEC-020 Falso techo continuo PYL hidrófugo | 1.0 × size | 5 m² | 32 € | 160 € |
+| IMP-010 Impermeabilización de suelo en zona húmeda | 1 × floor | 5 m² | — | needs a price |
+| PAV-020 Solado de gres porcelánico | 1 × floor | 5 m² | 86 € | 430 € |
+| REV-010 Alicatado de gres porcelánico | 1 × wall area | 9 × 2.5 − 1.6 = 20.9 m² | 90 € | 1 881 € |
+| TEC-020 Falso techo continuo PYL hidrófugo | 1 × floor | 5 m² | 32 € | 160 € |
 | SAN-010 Plato de ducha | fixed 1 | 1 ud | 640 € | 640 € |
 | FON-010 Punto de agua fría y caliente | fixed 4.5 | 4.5 ud | … | … |
 
-The factor 3.7 comes from Ortega y Gasset 47: 38.9 m² of tiling for 10.5 m² of wet-room floor. Factors are where your experience lives. Refine them as you measure more jobs.
+**Without a perimeter**, the room is taken as a 1:1.5 rectangle (5 m² → 9.13 m) and the perimeter is marked *estimated*. **Without a height**, the project's height is used, else the studio's (Settings → Studio, 2.60 m by default), marked *default*. Measure later with **Edit room** in the *By room* view: the room's lines are recalculated, except those you edited by hand.
 
 There are ten standard templates: whole-flat general items, bedroom, living room, hall, full bathroom, toilet, kitchen, laundry, window replacement (per window) and stripping out an existing bathroom or kitchen. Adapt them, or add your own, in **Catalogue → Room templates** (see [Rooms, templates and models](/wiki/rooms-and-models)).
 

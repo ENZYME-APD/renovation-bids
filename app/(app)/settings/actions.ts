@@ -37,6 +37,7 @@ export async function saveStudio(_p: FormState, fd: FormData): Promise<FormState
       default_contingency_pct: toNumber(fd.get("contingency")) ?? 7,
       default_vat_pct: toNumber(fd.get("vat")) ?? 10,
       allow_bid_options: fd.get("allow_bid_options") === "on",
+      default_room_height: Math.min(8, Math.max(1.8, toNumber(fd.get("room_height")) ?? 2.6)),
     })
     .eq("id", studio.id);
   return error ? { error: error.message } : done("Studio settings saved.");

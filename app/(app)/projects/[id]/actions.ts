@@ -27,17 +27,8 @@ export async function createVersion(projectId: string, _prev: string | null, for
   if (error) return error.code === "23505" ? `Version ${label} already exists.` : error.message;
 
   if (copyFrom) {
-    const { data: lines, error: readError } = await supabase
-      .from("line_items")
-      .select("partida_id, quantity, unit_price, price_id, confidence, state, archicad_element_ids, notes, room, source, source_ref, template_id, overridden")
-      .eq("version_id", copyFrom);
-    if (readError) return readError.message;
-    if (lines.length) {
-      const { error: copyError } = await supabase
-        .from("line_items")
-        .insert(lines.map((l) => ({ ...l, organization_id: studio.id, version_id: version.id })));
-      if (copyError) return copyError.message;
-    }
+    const { error: copyError } = await supabase.rpc("copy_version_contents", { p_from: copyFrom, p_to: version.id });
+    if (copyError) return copyError.message;
   }
 
   redirect(`/projects/${projectId}/versions/${version.id}`);
