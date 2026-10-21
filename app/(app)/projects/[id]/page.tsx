@@ -10,6 +10,7 @@ import { DeleteProject } from "./delete-project";
 import { modelToolLabel } from "@/lib/model-tools";
 import { unitLabel } from "@/lib/format";
 import { ProjectHeader } from "./project-header";
+import { FeeEditor, type Fee } from "../../fees/fee-editor";
 
 export default async function ProjectPage({ params }: PageProps<"/projects/[id]">) {
   const { id } = await params;
@@ -77,6 +78,15 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
   const initialCompare = project.contract_version_id && others.length
     ? [project.contract_version_id, others[others.length - 1].id]
     : versions.length > 1 ? [versions[0].id, versions[versions.length - 1].id] : versions.map((v) => v.id);
+  const [{ data: feeRows }, { data: feeSummary }, { count: defaultFees }] = await Promise.all([
+    supabase.from("project_fee_items").select("id, label, basis, amount, percent, months, phase, notes, sequence, total").eq("project_id", id).order("sequence"),
+    supabase.from("project_fee_summary").select("*").eq("project_id", id).maybeSingle(),
+    supabase.from("fee_items").select("id", { count: "exact", head: true }).is("project_id", null),
+  ]);
+  const fees: Fee[] = (feeRows ?? []).map((f) => ({
+    id: f.id!, label: f.label!, basis: f.basis!, amount: f.amount, percent: f.percent, months: f.months,
+    phase: f.phase, notes: f.notes, sequence: f.sequence ?? 0, total: f.total,
+  }));
   const coTotals = changeOrders?.length
     ? (await supabase.from("change_order_totals").select("change_order_id, total, lines").in("change_order_id", changeOrders.map((c) => c.id))).data ?? []
     : [];
@@ -169,6 +179,26 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
           />
         </section>
       )}
+
+      <section id="fees" className="scroll-mt-20 space-y-3">
+        <div>
+          <h2 className="text-lg font-semibold tracking-tight">Architect&apos;s fees</h2>
+          <p className="text-sm text-muted">Fixed amounts, a % of the construction budget, or monthly site supervision. Before VAT.</p>
+        </div>
+        {fees.length > 0 && feeSummary && (
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <Figure label="Total fees" value={money(feeSummary.fees_total, cur)}
+              sub={Number(feeSummary.items_missing_months) > 0 ? "Some monthly fees need their months" : `${fees.length} ${fees.length === 1 ? "item" : "items"}`} strong />
+            <Figure label="Share of construction" value={feeSummary.fees_pct == null ? "—" : `${Number(feeSummary.fees_pct).toLocaleString("es-ES")} %`}
+              sub={`of ${money(feeSummary.construction_base, cur)}`} />
+            <Figure label="Received" value={money(feeSummary.received_fees, cur)} sub="Payments in · fees" />
+            <Figure label="Still to invoice / collect" value={money(feeSummary.fees_outstanding, cur)} />
+          </div>
+        )}
+        <div className="card p-5">
+          <FeeEditor fees={fees} projectId={project.id} canWrite={studio.canWrite} currency={cur} hasDefaults={(defaultFees ?? 0) > 0} />
+        </div>
+      </section>
 
       <section id="change-orders" className="scroll-mt-20 space-y-3">
         <div className="flex items-center justify-between">

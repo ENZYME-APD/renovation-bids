@@ -327,6 +327,66 @@ export type Database = {
           },
         ]
       }
+      fee_items: {
+        Row: {
+          amount: number | null
+          basis: Database["public"]["Enums"]["fee_basis"]
+          created_at: string
+          id: string
+          label: string
+          months: number | null
+          notes: string | null
+          organization_id: string
+          percent: number | null
+          phase: Database["public"]["Enums"]["project_phase"] | null
+          project_id: string | null
+          sequence: number
+        }
+        Insert: {
+          amount?: number | null
+          basis: Database["public"]["Enums"]["fee_basis"]
+          created_at?: string
+          id?: string
+          label: string
+          months?: number | null
+          notes?: string | null
+          organization_id: string
+          percent?: number | null
+          phase?: Database["public"]["Enums"]["project_phase"] | null
+          project_id?: string | null
+          sequence?: number
+        }
+        Update: {
+          amount?: number | null
+          basis?: Database["public"]["Enums"]["fee_basis"]
+          created_at?: string
+          id?: string
+          label?: string
+          months?: number | null
+          notes?: string | null
+          organization_id?: string
+          percent?: number | null
+          phase?: Database["public"]["Enums"]["project_phase"] | null
+          project_id?: string | null
+          sequence?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fee_items_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fee_items_project_id_organization_id_fkey"
+            columns: ["project_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
       invitations: {
         Row: {
           accepted_at: string | null
@@ -2120,6 +2180,38 @@ export type Database = {
         }
         Relationships: []
       }
+      project_fee_items: {
+        Row: {
+          amount: number | null
+          basis: Database["public"]["Enums"]["fee_basis"] | null
+          construction_base: number | null
+          id: string | null
+          label: string | null
+          months: number | null
+          notes: string | null
+          organization_id: string | null
+          percent: number | null
+          phase: Database["public"]["Enums"]["project_phase"] | null
+          project_id: string | null
+          sequence: number | null
+          total: number | null
+        }
+        Relationships: []
+      }
+      project_fee_summary: {
+        Row: {
+          construction_base: number | null
+          fees_outstanding: number | null
+          fees_pct: number | null
+          fees_total: number | null
+          items: number | null
+          items_missing_months: number | null
+          organization_id: string | null
+          project_id: string | null
+          received_fees: number | null
+        }
+        Relationships: []
+      }
       project_main_version: {
         Row: {
           label: string | null
@@ -2231,6 +2323,10 @@ export type Database = {
       add_room: {
         Args: { p_height?: number; p_name?: string; p_openings?: number; p_perimeter?: number; p_size: number; p_source?: Database["public"]["Enums"]["line_source"]; p_source_ref?: string; p_template: string; p_version: string }
         Returns: string
+      }
+      apply_default_fees: {
+        Args: { p_project: string }
+        Returns: number
       }
       apply_room_template: {
         Args: { p_label?: string; p_size: number; p_source?: Database["public"]["Enums"]["line_source"]; p_source_ref?: string; p_template: string; p_version: string }
@@ -2351,6 +2447,7 @@ export type Database = {
       contact_source: "own" | "web" | "referral"
       decision_source: "email" | "meeting" | "call" | "site" | "other"
       decision_status: "open" | "applied" | "dropped"
+      fee_basis: "lump_sum" | "percent" | "monthly"
       line_source: "manual" | "template" | "model_zone" | "model_element" | "ai_assumption" | "import"
       line_state: "unpriced" | "priced" | "needs_rfq" | "quoted"
       member_role: "owner" | "admin" | "member" | "viewer"
@@ -2501,6 +2598,7 @@ export const Constants = {
       contact_source: ["own", "web", "referral"],
       decision_source: ["email", "meeting", "call", "site", "other"],
       decision_status: ["open", "applied", "dropped"],
+      fee_basis: ["lump_sum", "percent", "monthly"],
       line_source: ["manual", "template", "model_zone", "model_element", "ai_assumption", "import"],
       line_state: ["unpriced", "priced", "needs_rfq", "quoted"],
       member_role: ["owner", "admin", "member", "viewer"],

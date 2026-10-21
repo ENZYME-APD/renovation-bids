@@ -1,3 +1,4 @@
+import { FeeEditor, type Fee } from "../fees/fee-editor";
 import Link from "next/link";
 import { PageIntro } from "@/components/page-intro";
 import { headers } from "next/headers";
@@ -69,6 +70,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
           />
         </section>
       )}
+      {tab === "studio" && <DefaultFees canWrite={studio.isAdmin} currency={studio.currency} />}
       {tab === "team" && <TeamTab studioId={studio.id} isAdmin={studio.isAdmin} me={user.id} myRole={studio.role} />}
       {tab === "ai" && <AiTab studio={studio} />}
       {tab === "activity" && <ActivityTab canWrite={studio.canWrite} isAdmin={studio.isAdmin} me={user.id} />}
@@ -281,5 +283,19 @@ function ChangeList({
         );
       })}
     </ul>
+  );
+}
+
+async function DefaultFees({ canWrite, currency }: { canWrite: boolean; currency: string }) {
+  const supabase = await createClient();
+  const { data } = await supabase.from("fee_items").select("id, label, basis, amount, percent, months, phase, notes, sequence").is("project_id", null).order("sequence");
+  return (
+    <section className="card space-y-3 p-5">
+      <div>
+        <h2 className="font-semibold">Default architect&apos;s fees</h2>
+        <p className="text-sm text-muted">Every new project starts with these; change them per project as needed.</p>
+      </div>
+      <FeeEditor fees={(data ?? []) as Fee[]} projectId={null} canWrite={canWrite} currency={currency} />
+    </section>
   );
 }
