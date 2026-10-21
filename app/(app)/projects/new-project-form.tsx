@@ -21,9 +21,16 @@ function NewProjectForm({ onCancel }: { onCancel: () => void }) {
   const [error, action, pending] = useActionState(createProject, null);
   return (
     <form action={action} className="grid gap-4 sm:grid-cols-2">
-      <div className="sm:col-span-2">
-        <label htmlFor="name" className="label">Project name</label>
-        <input id="name" name="name" required autoFocus className="input" placeholder="Piso Chamberí, 3º B" />
+      <div className="grid gap-4 sm:col-span-2 sm:grid-cols-[11rem_1fr]">
+        <div>
+          <label htmlFor="code" className="label">Project code</label>
+          <input id="code" name="code" className="input font-mono" placeholder="Automatic" maxLength={32} />
+          <p className="mt-1 text-xs text-muted">Leave empty for PRJ-0001…, or use your company code (e.g. T26021).</p>
+        </div>
+        <div>
+          <label htmlFor="name" className="label">Project name</label>
+          <input id="name" name="name" required autoFocus className="input" placeholder="Piso Chamberí, 3º B" />
+        </div>
       </div>
       <div>
         <label htmlFor="client" className="label">Client</label>

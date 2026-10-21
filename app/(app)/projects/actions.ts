@@ -28,10 +28,17 @@ export async function createProject(_prev: string | null, formData: FormData): P
     clientId = data.id;
   }
 
+  const code = normaliseCode(formData.get("code"));
+  if (code) {
+    const err = checkCode(code);
+    if (err) return err;
+  }
+
   const { data, error } = await supabase
     .from("projects")
     .insert({
       organization_id: studio.id,
+      code, // empty = automatic PRJ-0001 numbering
       name,
       client_id: clientId,
       address: String(formData.get("address") ?? "").trim() || null,
@@ -42,7 +49,7 @@ export async function createProject(_prev: string | null, formData: FormData): P
     })
     .select("id")
     .single();
-  if (error) return error.message;
+  if (error) return error.code === "23505" ? `${code} is already used by another project.` : error.message;
 
   // Every project starts with option A, ready for line items.
   await supabase.from("versions").insert({ organization_id: studio.id, project_id: data.id, label: "A", description: "Initial scope" });
@@ -88,4 +95,29 @@ export async function deleteProject(_prev: string | null, formData: FormData): P
   revalidatePath("/projects");
   revalidatePath("/dashboard");
   redirect("/projects?deleted=" + encodeURIComponent(p.code));
+}
+
+/** A project's own code, e.g. from the company-wide numbering (T26021). Unique within the studio. */
+export async function setProjectCode(_prev: string | null, formData: FormData): Promise<string | null> {
+  await requireWriter();
+  const supabase = await createClient();
+  const id = String(formData.get("id"));
+  const code = normaliseCode(formData.get("code"));
+  if (!code) return "Enter a code.";
+  const err = checkCode(code);
+  if (err) return err;
+  const { error } = await supabase.from("projects").update({ code }).eq("id", id);
+  if (error) return error.code === "23505" ? `${code} is already used by another project.` : error.message;
+  revalidatePath(`/projects/${id}`);
+  revalidatePath("/projects");
+  return null;
+}
+
+function normaliseCode(v: FormDataEntryValue | null) {
+  return String(v ?? "").trim().replace(/\s+/g, " ");
+}
+function checkCode(code: string) {
+  if (code.length > 32) return "Keep the code under 32 characters.";
+  if (!/^[\p{L}\p{N}][\p{L}\p{N} ._\-/]*$/u.test(code)) return "Use letters, numbers, spaces and . _ - / only.";
+  return null;
 }
