@@ -277,8 +277,14 @@ const READ: ToolDef[] = [
     title: "List room templates",
     description: "The studio's room templates (kitchen, bathroom, bedroom…): each adds a standard set of lines scaled to the room size. match_terms are the room names / zone categories that map to it. Use with add_room.",
     inputSchema: schema({}),
-    run: async (_a, ctx) =>
-      check(await ctx.db.rpc("effective_room_templates", { p_org: ctx.studio.id }).select("id, code, name, size_label, description, match_terms, room_template_lines(count)").eq("active", true).order("sequence")),
+    run: async (_a, ctx) => {
+      const rows = check(await ctx.db.rpc("effective_room_templates", { p_org: ctx.studio.id }).select("id, code, name, size_label, description, match_terms, sequence").eq("active", true));
+      const ids = rows.map((t) => t.id);
+      const lines = ids.length ? check(await ctx.db.from("room_template_lines").select("template_id").in("template_id", ids)) : [];
+      return rows
+        .sort((a, b) => a.sequence - b.sequence)
+        .map((t) => ({ id: t.id, code: t.code, name: t.name, size_label: t.size_label, description: t.description, match_terms: t.match_terms, lines: lines.filter((l) => l.template_id === t.id).length }));
+    },
   },
   {
     name: "list_action_items",
