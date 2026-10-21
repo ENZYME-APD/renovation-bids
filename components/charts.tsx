@@ -1,6 +1,6 @@
 "use client";
 
-import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ReferenceLine, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis } from "recharts";
 
 // Thin bars with rounded data ends, recessive axes and grid, a tooltip on every mark.
 // Text uses ink tokens; colour only marks identity.
@@ -144,6 +144,46 @@ export function MoneyRows({ data, currency }: { data: { label: string; value: nu
           {data.map((d) => <Cell key={d.label} fill={d.color} />)}
         </Bar>
       </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+export type FeePoint = { code: string; name: string; construction: number; fees: number; area: number | null; pct: number | null; color: string; status: string };
+
+/** Fees against construction budget, one dot per project; dashed lines mark 5 % and 10 % of construction. */
+export function FeeScatter({ data, currency }: { data: FeePoint[]; currency: string }) {
+  const f = fmt(currency);
+  const full = fmt(currency, false);
+  const maxX = Math.max(1, ...data.map((d) => d.construction)) * 1.1;
+  return (
+    <ResponsiveContainer width="100%" height={260}>
+      <ScatterChart margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
+        <CartesianGrid stroke="var(--line)" strokeOpacity={0.6} />
+        <XAxis type="number" dataKey="construction" name="Construction" domain={[0, maxX]} {...AXIS} tickFormatter={(v) => f.format(v)} />
+        <YAxis type="number" dataKey="fees" name="Fees" {...AXIS} tickFormatter={(v) => f.format(v)} width={56} />
+        <ZAxis range={[90, 90]} />
+        <ReferenceLine segment={[{ x: 0, y: 0 }, { x: maxX, y: maxX * 0.05 }]} stroke="var(--muted)" strokeDasharray="4 4" ifOverflow="hidden" label={{ value: "5 %", position: "insideTopRight", fill: "var(--muted)", fontSize: 11 }} />
+        <ReferenceLine segment={[{ x: 0, y: 0 }, { x: maxX, y: maxX * 0.1 }]} stroke="var(--muted)" strokeDasharray="2 6" ifOverflow="hidden" label={{ value: "10 %", position: "insideTopRight", fill: "var(--muted)", fontSize: 11 }} />
+        <Tooltip
+          {...TIP}
+          cursor={{ strokeDasharray: "3 3", stroke: "var(--line)" }}
+          content={({ payload }) => {
+            const d = payload?.[0]?.payload as FeePoint | undefined;
+            if (!d) return null;
+            return (
+              <div style={TIP.contentStyle} className="px-3 py-2">
+                <div className="font-semibold">{d.code} · {d.name}</div>
+                <div>Fees {full.format(d.fees)}{d.pct != null ? ` · ${d.pct.toLocaleString("es-ES")} %` : ""}</div>
+                <div>Construction {full.format(d.construction)}</div>
+                {d.area ? <div>{full.format(d.fees / d.area)}/m² · {d.area} m²</div> : null}
+              </div>
+            );
+          }}
+        />
+        <Scatter data={data} isAnimationActive={false}>
+          {data.map((d) => <Cell key={d.code} fill={d.color} />)}
+        </Scatter>
+      </ScatterChart>
     </ResponsiveContainer>
   );
 }

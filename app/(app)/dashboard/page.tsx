@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/dal";
 import { dateShort, dateTime, humanize, money } from "@/lib/format";
 import { describe, groupChanges, sourceLabel, type ActivityRow } from "@/lib/activity";
-import { CountBars, DonutWithLegend, EurPerM2Bars, MoneyBars } from "@/components/charts";
+import { CountBars, DonutWithLegend, EurPerM2Bars, FeeScatter, MoneyBars, type FeePoint } from "@/components/charts";
 import { OPEN_STATUSES, STATUS_COLOR, STATUS_ORDER } from "@/lib/status";
 
 const ACTION_LABEL: Record<string, string> = {
@@ -18,12 +18,13 @@ export default async function DashboardPage() {
   const studio = await requireStudio();
   const supabase = await createClient();
   const [stats, actions, money_, invoices, log] = await Promise.all([
-    supabase.from("project_stats").select("project_id, code, name, status, created_at, subtotal, budget_low, budget_high, eur_per_m2, contract_value, bid_hours, lines, priced_lines, phase"),
+    supabase.from("project_stats").select("project_id, code, name, status, created_at, subtotal, budget_low, budget_high, eur_per_m2, contract_value, bid_hours, lines, priced_lines, phase, area_m2"),
     supabase.from("action_items").select("*").order("priority").order("due_on", { nullsFirst: false }).limit(12),
     supabase.from("project_money").select("project_id, code, name, status, budget, committed, paid_out, received_works, received_fees, contract_value"),
     supabase.from("invoice_balances").select("outstanding, due_on"),
     supabase.from("activity_log").select("*").order("occurred_at", { ascending: false }).limit(60),
   ]);
+  const { data: feeData } = await supabase.from("project_fee_summary").select("project_id, construction_base, fees_total, items, items_missing_months, received_fees, fees_outstanding, fees_pct");
   const projects = stats.data ?? [];
   const cur = studio.currency;
 
@@ -57,6 +58,34 @@ export default async function DashboardPage() {
   const moneyRows = (money_.data ?? [])
     .filter((m) => m.status === "won")
     .map((m) => ({ label: m.code ?? "", budget: Number(m.budget ?? 0), committed: Number(m.committed ?? 0), paid: Number(m.paid_out ?? 0) }));
+  // Fees across projects
+  const feeRows = (feeData ?? [])
+    .filter((f) => Number(f.items) > 0)
+    .map((f) => {
+      const p = projects.find((x) => x.project_id === f.project_id);
+      const area = p?.area_m2 ? Number(p.area_m2) : null;
+      const fees = Number(f.fees_total ?? 0);
+      const construction = Number(f.construction_base ?? 0);
+      return {
+        id: f.project_id!, code: p?.code ?? "", name: p?.name ?? "", status: p?.status ?? "lead", area, construction, fees,
+        pct: f.fees_pct == null ? null : Number(f.fees_pct), perM2: area ? fees / area : null,
+        received: Number(f.received_fees ?? 0), outstanding: Number(f.fees_outstanding ?? 0), missingMonths: Number(f.items_missing_months ?? 0),
+      };
+    })
+    .sort((a, b) => b.fees - a.fees);
+  const feeTotal = feeRows.reduce((t, r) => t + r.fees, 0);
+  const feeWon = feeRows.filter((r) => r.status === "won").reduce((t, r) => t + r.fees, 0);
+  const feeReceived = feeRows.reduce((t, r) => t + r.received, 0);
+  const withPct = feeRows.filter((r) => r.pct != null && r.construction > 0);
+  // Weighted: total fees over total construction, so big projects count for what they are.
+  const avgPct = withPct.length ? (withPct.reduce((t, r) => t + r.fees, 0) / withPct.reduce((t, r) => t + r.construction, 0)) * 100 : null;
+  const withArea = feeRows.filter((r) => r.perM2 != null);
+  const avgPerM2 = withArea.length ? withArea.reduce((t, r) => t + r.fees, 0) / withArea.reduce((t, r) => t + (r.area ?? 0), 0) : null;
+  const missingMonths = feeRows.filter((r) => r.missingMonths > 0).length;
+  const feePoints: FeePoint[] = feeRows.filter((r) => r.construction > 0).map((r) => ({
+    code: r.code, name: r.name, construction: r.construction, fees: r.fees, area: r.area, pct: r.pct, color: STATUS_COLOR[r.status], status: r.status,
+  }));
+
   const changes = groupChanges((log.data ?? []) as ActivityRow[]).slice(0, 6);
 
   return (
@@ -124,6 +153,79 @@ export default async function DashboardPage() {
         <h2 className="mb-1 font-semibold">Won projects: budget, committed and paid</h2>
         <p className="mb-3 text-xs text-muted">Committed = purchase orders not cancelled. Paid out = payments to suppliers and contractors.</p>
         {moneyRows.length ? <MoneyBars data={moneyRows} currency={cur} /> : <Empty text="Appears once a project is won and purchasing starts." />}
+      </section>
+
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold tracking-tight">Architect&apos;s fees</h2>
+          <p className="text-sm text-muted">Fees across projects against construction budget and area, before VAT.</p>
+        </div>
+        {feeRows.length === 0 ? (
+          <Empty text="Add fees to projects (or default fees in Settings → Studio) to see them here." />
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+              <Stat label="Fees in all projects" value={money(feeTotal, cur)} sub={`${feeRows.length} projects`} />
+              <Stat label="Fees in won projects" value={money(feeWon, cur)} sub={`${feeRows.filter((r) => r.status === "won").length} won`} />
+              <Stat label="Average share of construction" value={avgPct == null ? "—" : `${avgPct.toLocaleString("es-ES", { maximumFractionDigits: 1 })} %`} sub="Total fees ÷ total construction" />
+              <Stat label="Average fee per m²" value={avgPerM2 == null ? "—" : `${money(avgPerM2, cur)}/m²`} sub={`${withArea.length} projects with area`} />
+              <Stat label="Received" value={money(feeReceived, cur)} sub={`${money(feeTotal - feeReceived, cur)} still to collect`} />
+            </div>
+            {missingMonths > 0 && (
+              <p className="text-xs text-accent">
+                {missingMonths} {missingMonths === 1 ? "project has" : "projects have"} monthly fees without months: their supervision isn&apos;t counted yet.
+              </p>
+            )}
+            <div className="grid gap-6 lg:grid-cols-[3fr_2fr]">
+              <section className="card p-5">
+                <h3 className="mb-1 font-semibold">Fees vs construction budget</h3>
+                <p className="mb-3 text-xs text-muted">One dot per project, coloured by status. Dashed lines: 5 % and 10 % of construction.</p>
+                <FeeScatter data={feePoints} currency={cur} />
+              </section>
+              <section className="card p-5">
+                <h3 className="mb-1 font-semibold">Fee per m²</h3>
+                <p className="mb-3 text-xs text-muted">Total fees ÷ project area.</p>
+                {withArea.length ? (
+                  <EurPerM2Bars data={withArea.map((r) => ({ label: r.code, name: r.name, value: Math.round(r.perM2!) }))} currency={cur} />
+                ) : <Empty text="Projects need an area." />}
+              </section>
+            </div>
+            <div className="card overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-left text-xs text-muted">
+                  <tr className="border-b border-line">
+                    <th className="px-4 py-2 font-medium">Project</th>
+                    <th className="px-4 py-2 text-right font-medium">Area</th>
+                    <th className="px-4 py-2 text-right font-medium">Construction</th>
+                    <th className="px-4 py-2 text-right font-medium">Fees</th>
+                    <th className="px-4 py-2 text-right font-medium">% of construction</th>
+                    <th className="px-4 py-2 text-right font-medium">€/m²</th>
+                    <th className="px-4 py-2 text-right font-medium">Received</th>
+                    <th className="px-4 py-2 text-right font-medium">To collect</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {feeRows.map((r) => (
+                    <tr key={r.id} className="border-b border-line last:border-0 hover:bg-paper">
+                      <td className="px-4 py-2">
+                        <span className="mr-2 inline-block size-2 rounded-full align-middle" style={{ background: STATUS_COLOR[r.status] }} />
+                        <Link href={`/projects/${r.id}#fees`} className="hover:text-accent"><span className="font-mono text-xs text-muted">{r.code}</span> {r.name}</Link>
+                        {r.missingMonths > 0 && <span className="ml-2 text-xs text-accent">months missing</span>}
+                      </td>
+                      <td className="px-4 py-2 text-right tabular-nums">{r.area ? `${r.area} m²` : "—"}</td>
+                      <td className="px-4 py-2 text-right tabular-nums">{money(r.construction, cur)}</td>
+                      <td className="px-4 py-2 text-right font-medium tabular-nums">{money(r.fees, cur)}</td>
+                      <td className="px-4 py-2 text-right tabular-nums">{r.pct == null ? "—" : `${r.pct.toLocaleString("es-ES")} %`}</td>
+                      <td className="px-4 py-2 text-right tabular-nums">{r.perM2 == null ? "—" : money(r.perM2, cur)}</td>
+                      <td className="px-4 py-2 text-right tabular-nums">{money(r.received, cur)}</td>
+                      <td className="px-4 py-2 text-right tabular-nums">{money(r.outstanding, cur)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </section>
 
       <section className="card p-5">
