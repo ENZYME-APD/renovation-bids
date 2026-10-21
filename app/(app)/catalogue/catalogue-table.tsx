@@ -12,7 +12,7 @@ export type PriceEntry = {
 };
 export type Item = {
   id: string; code: string; description: string; longDescription: string | null; unit: string; tradeId: string; referenceCode: string | null;
-  kind: "standard" | "custom" | "own"; hidden: boolean;
+  kind: "standard" | "custom" | "own"; hidden: boolean; issues: string[];
   price: { unitPrice: number; source: string; confidence: string; pricedOn: string; own: boolean } | null;
   history: PriceEntry[];
 };
@@ -26,6 +26,8 @@ export function CatalogueTable({ items, chapters, currency, canWrite, spread }: 
   const [chapter, setChapter] = useState("");
   const [showHidden, setShowHidden] = useState(false);
   const [unpricedOnly, setUnpricedOnly] = useState(false);
+  const [issuesOnly, setIssuesOnly] = useState(false);
+  const issueCount = items.filter((i) => !i.hidden && i.issues.length).length;
   const hiddenCount = items.filter((i) => i.hidden).length;
   const unpricedCount = items.filter((i) => !i.hidden && !i.price).length;
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -43,11 +45,12 @@ export function CatalogueTable({ items, chapters, currency, canWrite, spread }: 
             i.tradeId === c.id &&
             (showHidden || !i.hidden) &&
             (!unpricedOnly || !i.price) &&
+            (!issuesOnly || i.issues.length > 0) &&
             (!needle || i.code.toLowerCase().includes(needle) || i.description.toLowerCase().includes(needle)),
         ),
       }))
       .filter((g) => g.items.length);
-  }, [items, chapters, q, chapter, showHidden, unpricedOnly]);
+  }, [items, chapters, q, chapter, showHidden, unpricedOnly, issuesOnly]);
 
   const total = groups.reduce((t, g) => t + g.items.length, 0);
   const allCollapsed = groups.length > 0 && groups.every((g) => collapsed.has(g.chapter.id));
@@ -85,6 +88,17 @@ export function CatalogueTable({ items, chapters, currency, canWrite, spread }: 
           >
             {unpricedOnly ? `Showing ${unpricedCount} without a price · Show all` : `Unpriced only (${unpricedCount})`}
           </button>
+          {issueCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setIssuesOnly((v) => !v)}
+              aria-pressed={issuesOnly}
+              title="Studio partidas outside the standard scheme: codes like AT1 from another system, no description, or a code from another chapter"
+              className={issuesOnly ? "font-medium text-accent" : "hover:text-ink"}
+            >
+              {issuesOnly ? `Showing ${issueCount} to standardise · Show all` : `To standardise (${issueCount})`}
+            </button>
+          )}
           <label className="flex items-center gap-2" title="Standard partidas your studio has hidden, and your own partidas you have hidden">
             <input type="checkbox" className="size-4 accent-[var(--accent)]" checked={showHidden} onChange={(e) => setShowHidden(e.target.checked)} disabled={!hiddenCount} />
             Show hidden ({hiddenCount})
@@ -125,6 +139,7 @@ export function CatalogueTable({ items, chapters, currency, canWrite, spread }: 
                       <td className="px-4 py-2.5">
                         <div className="flex items-center gap-2">
                           <span className="font-mono text-xs text-accent">{i.code}</span>
+                          {i.issues.map((x) => <span key={x} className="ml-1.5 rounded-full border border-accent px-1.5 text-[0.65rem] text-accent">{x}</span>)}
                           <span className={`rounded-full border px-1.5 text-[0.65rem] ${i.kind === "standard" ? "border-line text-muted" : "border-accent text-accent"}`}>{KIND[i.kind]}</span>
                           {i.hidden && <span className="rounded-full border border-line px-1.5 text-[0.65rem] text-muted">Hidden</span>}
                         </div>

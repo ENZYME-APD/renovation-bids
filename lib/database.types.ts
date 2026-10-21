@@ -2014,6 +2014,16 @@ export type Database = {
         }
         Relationships: []
       }
+      catalogue_issues: {
+        Row: {
+          code: string | null
+          id: string | null
+          issues: string[] | null
+          organization_id: string | null
+          short_description: string | null
+        }
+        Relationships: []
+      }
       change_order_totals: {
         Row: {
           change_order_id: string | null

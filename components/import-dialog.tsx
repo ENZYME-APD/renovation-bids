@@ -13,7 +13,7 @@ export function ImportDialog({
   action: (prev: any, fd: FormData) => Promise<any>;
   title: string;
   intro: ReactNode;
-  renderPreview: (p: any) => ReactNode;
+  renderPreview: (p: any, setExtra: (k: string, v: string) => void) => ReactNode;
   renderDone: (d: any) => ReactNode;
   options?: (opts: Record<string, boolean>, set: (k: string, v: boolean) => void) => ReactNode;
   applyLabel: string;
@@ -21,6 +21,8 @@ export function ImportDialog({
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [opts, setOpts] = useState<Record<string, boolean>>({});
+  const [extra, setExtraState] = useState<Record<string, string>>({});
+  const setExtra = (k: string, v: string) => setExtraState((e) => (e[k] === v ? e : { ...e, [k]: v }));
   const [state, run, pending] = useActionState<Base, FormData>(action, null);
   const view = file ? state : null;
 
@@ -30,6 +32,7 @@ export function ImportDialog({
     fd.set("file", f);
     fd.set("mode", mode);
     for (const [k, v] of Object.entries(o)) if (v) fd.set(k, "on");
+    if (mode === "apply") for (const [k, v] of Object.entries(extra)) fd.set(k, v);
     startTransition(() => run(fd));
   };
   const close = () => { setOpen(false); setFile(null); };
@@ -46,6 +49,7 @@ export function ImportDialog({
             onChange={(e) => {
               const f = e.target.files?.[0] ?? null;
               setFile(f);
+              setExtraState({});
               if (f) send("preview", opts, f);
             }}
             className="block w-full text-sm file:mr-3 file:rounded-md file:border file:border-line file:bg-surface file:px-3 file:py-1.5 file:text-ink"
@@ -55,7 +59,7 @@ export function ImportDialog({
           {view && "error" in view && <p className="text-accent">{view.error}</p>}
           {view && "preview" in view && (
             <>
-              {renderPreview(view.preview)}
+              {renderPreview(view.preview, setExtra)}
               <div className="flex justify-end gap-2">
                 <button type="button" className="btn-quiet" onClick={close}>Cancel</button>
                 <button type="button" className="btn" disabled={pending} onClick={() => send("apply")}>{applyLabel}</button>

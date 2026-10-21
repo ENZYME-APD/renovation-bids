@@ -24,6 +24,8 @@ export default async function CataloguePage() {
       .limit(5000),
     supabase.from("regions").select("settings").eq("id", studio.regionId).maybeSingle(),
   ]);
+  const { data: issueRows } = await supabase.from("catalogue_issues").select("id, issues").eq("organization_id", studio.id);
+  const issuesById = new Map((issueRows ?? []).map((r) => [r.id, r.issues ?? []]));
   // Budget ranges: each line's total ± this share, by price confidence (region settings).
   const raw = ((regionRes.data?.settings ?? {}) as { confidence_spread?: Record<string, number> }).confidence_spread ?? {};
   const spread = { high: Number(raw.high ?? 0.05), medium: Number(raw.medium ?? 0.12), low: Number(raw.low ?? 0.25) };
@@ -51,6 +53,7 @@ export default async function CataloguePage() {
       referenceCode: p.reference_code,
       kind: p.kind,
       hidden: p.hidden,
+      issues: issuesById.get(p.id) ?? [],
       price: c ? { unitPrice: Number(c.unit_price), source: c.source, confidence: c.confidence, pricedOn: c.priced_on, own: c.is_own } : null,
       history: history.get(p.id) ?? [],
     };

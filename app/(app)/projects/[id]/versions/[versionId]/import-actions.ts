@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { unstable_rethrow } from "next/navigation";
 import { requireWriter } from "@/lib/dal";
-import { parseBudgetFile, partial } from "@/lib/import/budget";
+import { parseBudgetFile, partial, type ImportLine } from "@/lib/import/budget";
+import { defaultChoice, isConfident, suggest, type CataloguePartida, type Suggestion } from "@/lib/import/match";
 
 export type ImportPreview = {
   format: string;
@@ -21,6 +22,14 @@ export type ImportPreview = {
   warnings: string[];
   skipped: string[];
   generalNotes: boolean;
+  review: ReviewRow[];
+  catalogue: { id: string; code: string; title: string; unit: string; trade: string }[];
+  chapterList: { code: string; name: string }[];
+};
+/** One imported line whose code is not in the catalogue: what it is and what we suggest. */
+export type ReviewRow = {
+  i: number; code: string; title: string; unit: string | null; quantity: number | null; unitPrice: number | null; room: string | null;
+  chapter: string | null; suggestions: Suggestion[]; choice: string; confident: boolean;
 };
 export type ImportState =
   | { error: string }
@@ -54,6 +63,20 @@ export async function importBudget(projectId: string, versionId: string, _prev: 
   const { data: existing } = await supabase.from("line_items").select("id").eq("version_id", versionId);
   const ids = new Set((existing ?? []).map((l) => l.id));
   const updates = parsed.lines.filter((l) => l.id && ids.has(l.id)).length;
+
+  // The catalogue the lines are matched against: standard partidas plus the studio's own, by code
+  const studio = await requireWriter();
+  const [{ data: parts }, { data: trades }] = await Promise.all([
+    supabase.from("partidas").select("id, code, short_description, long_description, unit, organization_id, active, trades(code)").eq("region_id", studio.regionId),
+    supabase.from("trades").select("code, name, sequence").eq("region_id", studio.regionId).not("code", "is", null).order("sequence"),
+  ]);
+  const own = new Map((parts ?? []).filter((x) => x.organization_id).map((x) => [x.code.toUpperCase(), x]));
+  const catalogue: CataloguePartida[] = (parts ?? [])
+    .filter((x) => (x.organization_id ? x.active : !own.has(x.code.toUpperCase())))
+    .filter((x) => /^[A-Z]{3}-\d{3}$/.test(x.code))
+    .map((x) => ({ id: x.id, code: x.code, title: x.short_description, long: x.long_description, unit: x.unit, trade: x.trades?.code ?? "" }));
+  const known = new Set((parts ?? []).map((x) => x.code.toUpperCase()));
+  const needsReview = (l: ImportLine) => !(l.id && ids.has(l.id)) && !(l.code && /^[A-Z]{3}-\d{3}$/.test(l.code.toUpperCase()) && known.has(l.code.toUpperCase()));
 
   if (fd.get("mode") !== "apply") {
     const codes = [...new Set(parsed.lines.filter((l) => !(l.id && ids.has(l.id))).map((l) => l.code.toUpperCase()))];
@@ -91,11 +114,39 @@ export async function importBudget(projectId: string, versionId: string, _prev: 
         warnings: parsed.warnings,
         skipped: parsed.skipped,
         generalNotes: !!parsed.generalNotes,
+        review: parsed.lines.flatMap((l, i) => {
+          if (!needsReview(l)) return [];
+          const sug = suggest(l, catalogue);
+          const confident = isConfident(sug, l.unit);
+          return [{
+            i, code: l.code, title: l.title ?? l.code, unit: l.unit ?? null, quantity: l.quantity ?? null, unitPrice: l.unit_price ?? null,
+            room: l.room ?? null, chapter: l.chapter ?? null, suggestions: sug, choice: defaultChoice(sug, l.unit), confident,
+          }];
+        }),
+        catalogue: catalogue.map((c) => ({ id: c.id, code: c.code, title: c.title, unit: c.unit, trade: c.trade }))
+          .sort((a, b) => a.code.localeCompare(b.code, "es", { numeric: true })),
+        chapterList: (trades ?? []).map((t) => ({ code: t.code!, name: t.name })),
       },
     };
   }
 
-  const payload = parsed.lines.map(({ sourceChapter: _c, ...l }) => l); // eslint-disable-line @typescript-eslint/no-unused-vars
+  // Review choices: { "<line index>": "<partida id>" | "new" | "new:<CHAPTER>" }
+  let mapping: Record<string, string> = {};
+  try {
+    mapping = JSON.parse(String(fd.get("mapping") ?? "{}"));
+  } catch {
+    return { error: "The review choices could not be read; preview the file again." };
+  }
+  const payload = parsed.lines.map(({ sourceChapter: _c, ...l }, i) => { // eslint-disable-line @typescript-eslint/no-unused-vars
+    if (!needsReview(l)) return l;
+    const choice = mapping[String(i)];
+    if (!choice) {
+      const d = defaultChoice(suggest(l, catalogue), l.unit);
+      return d === "new" ? { ...l, new_partida: true, source_ref: l.code } : { ...l, partida_id: d, source_ref: l.code };
+    }
+    if (choice.startsWith("new")) return { ...l, new_partida: true, chapter: choice.split(":")[1] || l.chapter, source_ref: l.code };
+    return { ...l, partida_id: choice, source_ref: l.code };
+  });
   const { data, error } = await supabase.rpc("import_budget", {
     p_version: versionId,
     p_lines: payload,
