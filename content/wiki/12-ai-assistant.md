@@ -57,8 +57,8 @@ The assistant acts **as you**: it sees exactly what you see and can change exact
 > *"Read the zones from the open Archicad model and add them as rooms to PRJ-0003 version A."*
 > Lists the zones (name, category, area), the template each matches and the ones that don't, then after your OK adds them as *model zone* lines keyed by zone id.
 
-> *"No model yet: from these photos and the floor plan sketch, estimate the rooms of this 85 m² flat and add them."*
-> Adds the rooms as *AI assumption*, so they read as estimates until measured.
+> *"Here's a dimensioned sketch of the flat. Add the rooms to PRJ-0004 version A, ceilings at 2.70."*
+> Reads each room's dimensions, works out area, perimeter and openings, lists them with the template each matches, and after your OK adds them as *AI assumption* with their measurements.
 
 > *"Which partidas in the catalogue still have no price?"*
 

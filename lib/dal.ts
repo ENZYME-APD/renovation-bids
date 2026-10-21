@@ -22,7 +22,7 @@ export const getStudio = cache(async () => {
   const { data, error } = await supabase
     .from("members")
     .select(
-      "role, organization_id, organizations(id, name, region_id, currency, language, default_contingency_pct, default_vat_pct, ai_connect, ai_changes, allow_bid_options)",
+      "role, organization_id, organizations(id, name, region_id, currency, language, default_contingency_pct, default_vat_pct, ai_connect, ai_changes, allow_bid_options, default_room_height)",
     )
     .order("created_at", { ascending: true })
     .limit(1)
@@ -42,6 +42,7 @@ export const getStudio = cache(async () => {
     aiConnect: o.ai_connect,
     aiChanges: o.ai_changes,
     allowBidOptions: o.allow_bid_options,
+    defaultRoomHeight: Number(o.default_room_height),
     role,
     isAdmin: role === "owner" || role === "admin",
     canWrite: role !== "viewer",

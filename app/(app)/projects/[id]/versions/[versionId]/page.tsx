@@ -9,6 +9,7 @@ import { updateVersionStatus } from "./actions";
 import { AddButtons } from "./add-buttons";
 import { effectiveCatalogue } from "@/lib/catalogue";
 import { LineTable, type Group, type Line } from "./line-table";
+import type { RoomInfo, Template } from "./add-room-form";
 
 export default async function VersionPage({ params, searchParams }: PageProps<"/projects/[id]/versions/[versionId]">) {
   const { id: projectId, versionId } = await params;
@@ -20,15 +21,15 @@ export default async function VersionPage({ params, searchParams }: PageProps<"/
 
   const [{ data: version }, { data: project }] = await Promise.all([
     supabase.from("versions").select("id, label, description, status, project_id, locked").eq("id", versionId).maybeSingle(),
-    supabase.from("projects").select("id, code, name").eq("id", projectId).maybeSingle(),
+    supabase.from("projects").select("id, code, name, room_height").eq("id", projectId).maybeSingle(),
   ]);
   if (!version || !project || version.project_id !== project.id) notFound();
 
-  const [budgetRes, linesRes, partidasRes, pricesRes, templatesRes] = await Promise.all([
+  const [budgetRes, linesRes, partidasRes, pricesRes, templatesRes, roomsRes] = await Promise.all([
     supabase.rpc("version_budget", { p_version: versionId }),
     supabase
       .from("line_items")
-      .select("id, quantity, unit_price, confidence, state, total, notes, room, source, overridden, updated_at, partidas(id, code, short_description, unit, trades(id, code, name, sequence))")
+      .select("id, quantity, unit_price, confidence, state, total, notes, room, room_id, source, overridden, updated_at, partidas(id, code, short_description, unit, trades(id, code, name, sequence))")
       .eq("version_id", versionId)
       .order("created_at", { ascending: true }),
     supabase
@@ -40,11 +41,31 @@ export default async function VersionPage({ params, searchParams }: PageProps<"/
       .rpc("effective_room_templates", { p_org: studio.id })
       .select("id, code, name, size_label, description, sequence")
       .eq("active", true),
+    supabase
+      .from("rooms")
+      .select("id, name, template_id, size, perimeter, height, openings, perimeter_estimated, height_assumed, source, created_at")
+      .eq("version_id", versionId)
+      .order("created_at"),
   ]);
   if (linesRes.error) throw linesRes.error;
   if (templatesRes.error) throw templatesRes.error;
   // PostgREST cannot order a function's rows here, so sort in code.
-  const templates = [...(templatesRes.data ?? [])].sort((a, b) => a.sequence - b.sequence || a.name.localeCompare(b.name, "es"));
+  const templateRows = [...(templatesRes.data ?? [])].sort((a, b) => a.sequence - b.sequence || a.name.localeCompare(b.name, "es"));
+  // Which templates measure walls (perimeter or wall area): those ask for height and perimeter.
+  const roomRows = roomsRes.data ?? [];
+  const tplIds = [...new Set([...templateRows.map((t) => t.id), ...roomRows.map((r) => r.template_id).filter((x): x is string => !!x)])];
+  const { data: wallLines } = tplIds.length
+    ? await supabase.from("room_template_lines").select("template_id").in("template_id", tplIds).or("per_perimeter.neq.0,per_wall_area.neq.0")
+    : { data: [] as { template_id: string }[] };
+  const wallTemplates = new Set((wallLines ?? []).map((l) => l.template_id));
+  const templates: Template[] = templateRows.map((t) => ({ id: t.id, code: t.code, name: t.name, size_label: t.size_label, description: t.description, walls: wallTemplates.has(t.id) }));
+  const sizeLabelOf = new Map(templateRows.map((t) => [t.id, t.size_label]));
+  const roomInfo = new Map<string, RoomInfo>(roomRows.map((r) => [r.id, {
+    id: r.id, name: r.name, size: Number(r.size), sizeLabel: r.template_id ? (sizeLabelOf.get(r.template_id) ?? "m²") : "m²",
+    perimeter: r.perimeter == null ? null : Number(r.perimeter), height: r.height == null ? null : Number(r.height), openings: Number(r.openings),
+    perimeterEstimated: r.perimeter_estimated, heightAssumed: r.height_assumed, source: r.source, walls: !!r.template_id && wallTemplates.has(r.template_id),
+  }]));
+  const defaultHeight = Number(project.room_height ?? studio.defaultRoomHeight);
   if (partidasRes.error) throw partidasRes.error;
 
   const budget = budgetRes.data ?? [];
@@ -76,6 +97,7 @@ export default async function VersionPage({ params, searchParams }: PageProps<"/
       updatedAt: l.updated_at,
       source: l.source,
       overridden: l.overridden,
+      roomId: l.room_id,
       sequence: t?.sequence ?? 999,
       chapterKey: t?.id ?? "none",
     };
@@ -83,10 +105,10 @@ export default async function VersionPage({ params, searchParams }: PageProps<"/
   const rooms = [...new Set(rows.map((r) => r.room).filter((r): r is string => !!r))];
   const groupMap = new Map<string, Group & { order: number }>();
   for (const r of rows) {
-    const key = groupBy === "room" ? (r.room ?? "") : r.chapterKey;
+    const key = groupBy === "room" ? (r.roomId ?? `name:${r.room ?? ""}`) : r.chapterKey;
     const name = groupBy === "room" ? (r.room ?? "No room") : r.chapter;
     const order = groupBy === "room" ? (r.room ? rooms.indexOf(r.room) : 9999) : r.sequence;
-    if (!groupMap.has(key)) groupMap.set(key, { key, name, order, lines: [] });
+    if (!groupMap.has(key)) groupMap.set(key, { key, name, order, lines: [], room: groupBy === "room" && r.roomId ? roomInfo.get(r.roomId) : undefined });
     groupMap.get(key)!.lines.push(r);
   }
   const lineGroups: Group[] = [...groupMap.values()].sort((a, b) => a.order - b.order);
@@ -209,7 +231,7 @@ export default async function VersionPage({ params, searchParams }: PageProps<"/
           </div>
           {studio.canWrite && !version.locked && (
             <div className="flex gap-2">
-              <AddButtons projectId={projectId} versionId={versionId} templates={templates} groups={pickerGroups} rooms={rooms} />
+              <AddButtons projectId={projectId} versionId={versionId} templates={templates} groups={pickerGroups} rooms={rooms} defaultHeight={defaultHeight} />
             </div>
           )}
         </div>

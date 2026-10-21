@@ -65,9 +65,9 @@ begin
   perform pg_temp.check(public.copy_room_template(v_org, v_ban) = v_copy, 'copying again returns the same copy');
   perform pg_temp.check((select count(*) = 1 from public.effective_room_templates(v_org) where code = 'BAN'), 'studio sees one BAN');
   perform pg_temp.check((select id = v_copy from public.effective_room_templates(v_org) where code = 'BAN'), 'studio BAN is its copy');
-  update public.room_template_lines set factor = 4.0
+  update public.room_template_lines set per_wall_area = 0.9
    where template_id = v_copy and partida_id = (select id from public.partidas where code = 'REV-010' and organization_id is null);
-  perform pg_temp.check((select factor = 3.7 from public.room_template_lines
+  perform pg_temp.check((select per_wall_area = 1 from public.room_template_lines
                           where template_id = v_ban and partida_id = (select id from public.partidas where code = 'REV-010' and organization_id is null)),
                         'editing the copy leaves the standard alone');
 

@@ -107,15 +107,61 @@ export async function addRoom(projectId: string, versionId: string, _prev: strin
   const size = toNumber(formData.get("size"));
   if (!templateId) return "Choose a room type.";
   if (size == null || size <= 0) return "Enter the room size.";
+  const height = toNumber(formData.get("height"));
+  const perimeter = toNumber(formData.get("perimeter"));
+  const openings = toNumber(formData.get("openings"));
+  if (height != null && (height < 1.8 || height > 8)) return "Height should be between 1.8 and 8 m.";
+  if (perimeter != null && perimeter <= 0) return "Perimeter must be positive, or leave it empty to estimate it.";
 
-  const { data, error } = await supabase.rpc("apply_room_template", {
+  const { data: roomId, error } = await supabase.rpc("add_room", {
     p_version: versionId,
     p_template: templateId,
     p_size: size,
-    p_label: String(formData.get("label") ?? "").trim() || undefined,
+    p_name: String(formData.get("label") ?? "").trim() || undefined,
+    p_height: height ?? undefined,
+    p_perimeter: perimeter ?? undefined,
+    p_openings: openings ?? 0,
   });
   if (error) return error.message;
-  if (!data) return "Nothing added: the template has no items for that size.";
+  const { count } = await supabase.from("line_items").select("id", { count: "exact", head: true }).eq("room_id", roomId);
+  if (!count) {
+    await supabase.from("rooms").delete().eq("id", roomId);
+    return "Nothing added: the template has no items for that size.";
+  }
+  revalidatePath(pathFor(projectId, versionId));
+  return null;
+}
+
+/** Change a room's name or measurements; its template lines are recalculated unless edited by hand. */
+export async function updateRoom(projectId: string, versionId: string, _prev: string | null, formData: FormData): Promise<string | null> {
+  await requireWriter();
+  const supabase = await createClient();
+  const size = toNumber(formData.get("size"));
+  const height = toNumber(formData.get("height"));
+  const perimeter = toNumber(formData.get("perimeter"));
+  const openings = toNumber(formData.get("openings"));
+  if (size != null && size < 0) return "Size cannot be negative.";
+  if (height != null && (height < 1.8 || height > 8)) return "Height should be between 1.8 and 8 m.";
+  const { error } = await supabase.rpc("update_room", {
+    p_room: String(formData.get("room_id")),
+    p_name: String(formData.get("name") ?? "").trim() || undefined,
+    p_size: size ?? undefined,
+    p_height: height ?? undefined,
+    p_perimeter: perimeter ?? undefined,
+    p_openings: openings ?? undefined,
+    p_estimate_perimeter: perimeter == null && formData.get("estimate") === "on",
+  });
+  if (error) return error.message;
+  revalidatePath(pathFor(projectId, versionId));
+  return null;
+}
+
+/** Remove a room and every line in it. */
+export async function deleteRoom(projectId: string, versionId: string, _prev: string | null, formData: FormData): Promise<string | null> {
+  await requireWriter();
+  const supabase = await createClient();
+  const { error } = await supabase.from("rooms").delete().eq("id", String(formData.get("room_id")));
+  if (error) return error.message;
   revalidatePath(pathFor(projectId, versionId));
   return null;
 }

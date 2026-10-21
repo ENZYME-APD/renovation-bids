@@ -387,6 +387,7 @@ export type Database = {
           price_id: string | null
           quantity: number
           room: string | null
+          room_id: string | null
           source: Database["public"]["Enums"]["line_source"]
           source_ref: string | null
           state: Database["public"]["Enums"]["line_state"]
@@ -408,6 +409,7 @@ export type Database = {
           price_id?: string | null
           quantity?: number
           room?: string | null
+          room_id?: string | null
           source?: Database["public"]["Enums"]["line_source"]
           source_ref?: string | null
           state?: Database["public"]["Enums"]["line_state"]
@@ -429,6 +431,7 @@ export type Database = {
           price_id?: string | null
           quantity?: number
           room?: string | null
+          room_id?: string | null
           source?: Database["public"]["Enums"]["line_source"]
           source_ref?: string | null
           state?: Database["public"]["Enums"]["line_state"]
@@ -459,6 +462,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "prices"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "line_items_room_fk"
+            columns: ["room_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id", "organization_id"]
           },
           {
             foreignKeyName: "line_items_version_id_organization_id_fkey"
@@ -600,6 +610,7 @@ export type Database = {
           created_at: string
           currency: string
           default_contingency_pct: number
+          default_room_height: number
           default_vat_pct: number
           id: string
           language: string
@@ -616,6 +627,7 @@ export type Database = {
           created_at?: string
           currency?: string
           default_contingency_pct?: number
+          default_room_height?: number
           default_vat_pct?: number
           id?: string
           language?: string
@@ -632,6 +644,7 @@ export type Database = {
           created_at?: string
           currency?: string
           default_contingency_pct?: number
+          default_room_height?: number
           default_vat_pct?: number
           id?: string
           language?: string
@@ -930,6 +943,7 @@ export type Database = {
           organization_id: string
           outcome_reason: string | null
           phase: Database["public"]["Enums"]["project_phase"]
+          room_height: number | null
           status: Database["public"]["Enums"]["project_status"]
           updated_at: string
         }
@@ -955,6 +969,7 @@ export type Database = {
           organization_id: string
           outcome_reason?: string | null
           phase?: Database["public"]["Enums"]["project_phase"]
+          room_height?: number | null
           status?: Database["public"]["Enums"]["project_status"]
           updated_at?: string
         }
@@ -980,6 +995,7 @@ export type Database = {
           organization_id?: string
           outcome_reason?: string | null
           phase?: Database["public"]["Enums"]["project_phase"]
+          room_height?: number | null
           status?: Database["public"]["Enums"]["project_status"]
           updated_at?: string
         }
@@ -1369,6 +1385,8 @@ export type Database = {
           id: string
           note: string | null
           partida_id: string
+          per_perimeter: number
+          per_wall_area: number
           sequence: number
           template_id: string
         }
@@ -1378,6 +1396,8 @@ export type Database = {
           id?: string
           note?: string | null
           partida_id: string
+          per_perimeter?: number
+          per_wall_area?: number
           sequence?: number
           template_id: string
         }
@@ -1387,6 +1407,8 @@ export type Database = {
           id?: string
           note?: string | null
           partida_id?: string
+          per_perimeter?: number
+          per_wall_area?: number
           sequence?: number
           template_id?: string
         }
@@ -1461,6 +1483,78 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "regions"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      rooms: {
+        Row: {
+          created_at: string
+          height: number | null
+          height_assumed: boolean
+          id: string
+          name: string
+          notes: string | null
+          openings: number
+          organization_id: string
+          perimeter: number | null
+          perimeter_estimated: boolean
+          size: number
+          source: Database["public"]["Enums"]["line_source"]
+          source_ref: string | null
+          template_id: string | null
+          updated_at: string
+          version_id: string
+        }
+        Insert: {
+          created_at?: string
+          height?: number | null
+          height_assumed?: boolean
+          id?: string
+          name: string
+          notes?: string | null
+          openings?: number
+          organization_id: string
+          perimeter?: number | null
+          perimeter_estimated?: boolean
+          size?: number
+          source?: Database["public"]["Enums"]["line_source"]
+          source_ref?: string | null
+          template_id?: string | null
+          updated_at?: string
+          version_id: string
+        }
+        Update: {
+          created_at?: string
+          height?: number | null
+          height_assumed?: boolean
+          id?: string
+          name?: string
+          notes?: string | null
+          openings?: number
+          organization_id?: string
+          perimeter?: number | null
+          perimeter_estimated?: boolean
+          size?: number
+          source?: Database["public"]["Enums"]["line_source"]
+          source_ref?: string | null
+          template_id?: string | null
+          updated_at?: string
+          version_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rooms_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rooms_version_id_organization_id_fkey"
+            columns: ["version_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "versions"
+            referencedColumns: ["id", "organization_id"]
           },
         ]
       }
@@ -2036,6 +2130,10 @@ export type Database = {
         Args: { p_token: string }
         Returns: string
       }
+      add_room: {
+        Args: { p_height?: number; p_name?: string; p_openings?: number; p_perimeter?: number; p_size: number; p_source?: Database["public"]["Enums"]["line_source"]; p_source_ref?: string; p_template: string; p_version: string }
+        Returns: string
+      }
       apply_room_template: {
         Args: { p_label?: string; p_size: number; p_source?: Database["public"]["Enums"]["line_source"]; p_source_ref?: string; p_template: string; p_version: string }
         Returns: number
@@ -2043,6 +2141,10 @@ export type Database = {
       copy_room_template: {
         Args: { p_code?: string; p_name?: string; p_org: string; p_template: string }
         Returns: string
+      }
+      copy_version_contents: {
+        Args: { p_from: string; p_to: string }
+        Returns: number
       }
       create_organization: {
         Args: { p_name: string; p_region_id: string }
@@ -2067,6 +2169,10 @@ export type Database = {
         Returns: Database["public"]["Tables"]["room_templates"]["Row"][]
         SetofOptions: { from: "*"; to: "room_templates"; isOneToOne: false; isSetofReturn: true }
       }
+      estimate_perimeter: {
+        Args: { p_area: number }
+        Returns: number
+      }
       get_invitation: {
         Args: { p_token: string }
         Returns: {
@@ -2085,6 +2191,10 @@ export type Database = {
         Args: { p_po_line: string }
         Returns: string
       }
+      room_line_quantity: {
+        Args: { p_factor: number; p_fixed: number; p_height: number; p_openings: number; p_per_perimeter: number; p_per_wall_area: number; p_perimeter: number; p_size: number }
+        Returns: number
+      }
       sign_contract: {
         Args: { p_project: string; p_signed_on?: string; p_value?: number; p_version: string }
         Returns: string
@@ -2095,6 +2205,10 @@ export type Database = {
       }
       undo_change: {
         Args: { p_change_id: string }
+        Returns: number
+      }
+      update_room: {
+        Args: { p_estimate_perimeter?: boolean; p_height?: number; p_name?: string; p_openings?: number; p_perimeter?: number; p_room: string; p_size?: number }
         Returns: number
       }
       version_budget: {

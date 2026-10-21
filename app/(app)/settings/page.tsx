@@ -62,6 +62,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
             contingency={studio.contingencyPct}
             vat={studio.vatPct}
             allowBidOptions={studio.allowBidOptions}
+            roomHeight={studio.defaultRoomHeight}
             disabled={!studio.isAdmin}
           />
         </section>

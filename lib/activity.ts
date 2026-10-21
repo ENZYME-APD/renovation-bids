@@ -8,7 +8,7 @@ const TABLES: Record<string, string> = {
   decisions: "client request", suppliers: "supplier", supplier_trades: "supplier trade",
   rfqs: "supplier request", rfq_line_items: "line in a supplier request", quotes: "quote",
   prices: "price", line_items: "budget line", offers: "offer", trades: "chapter",
-  partidas: "partida", room_templates: "room template", purchase_orders: "purchase order",
+  partidas: "partida", room_templates: "room template", rooms: "room", purchase_orders: "purchase order",
   purchase_order_lines: "purchase line", supplier_invoices: "supplier invoice", payments: "payment",
 };
 

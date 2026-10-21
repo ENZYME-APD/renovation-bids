@@ -8,7 +8,7 @@ import {
 
 export type EditorLine = {
   id: string; code: string; description: string; unit: string; chapter: string;
-  factor: number; fixed: number; note: string | null; price: number | null;
+  factor: number; perPerimeter: number; perWallArea: number; fixed: number; note: string | null; price: number | null;
 };
 export type PartidaOption = { id: string; code: string; description: string; unit: string; chapter: string; sequence: number };
 type Template = {
@@ -16,14 +16,20 @@ type Template = {
   active: boolean; standard: boolean; replacesStandard: boolean;
 };
 
-export function TemplateEditor({ template, lines, options, editable, canWrite, currency }: {
-  template: Template; lines: EditorLine[]; options: PartidaOption[]; editable: boolean; canWrite: boolean; currency: string;
+export function TemplateEditor({ template, lines, options, editable, canWrite, currency, defaultHeight }: {
+  template: Template; lines: EditorLine[]; options: PartidaOption[]; editable: boolean; canWrite: boolean; currency: string; defaultHeight: number;
 }) {
   const [size, setSize] = useState(template.sizeLabel.startsWith("número") ? 1 : 10);
+  const [height, setHeight] = useState(defaultHeight);
+  const [perimeterIn, setPerimeterIn] = useState("");
+  const walls = lines.some((l) => l.perPerimeter || l.perWallArea);
+  const estimated = Math.round(5 * Math.sqrt(Math.max(size, 0) / 1.5) * 100) / 100;
+  const perimeter = Number(perimeterIn.replace(",", ".")) || estimated;
+  const wallArea = Math.max(perimeter * height, 0);
   const preview = useMemo(() => lines.map((l) => {
-    const q = Math.round((l.factor * size + l.fixed) * 1000) / 1000;
+    const q = Math.round((l.factor * size + l.perPerimeter * perimeter + l.perWallArea * wallArea + l.fixed) * 1000) / 1000;
     return { ...l, q, total: l.price != null ? q * l.price : null };
-  }), [lines, size]);
+  }), [lines, size, perimeter, wallArea]);
   const total = preview.reduce((s, l) => s + (l.total ?? 0), 0);
   const unpriced = preview.filter((l) => l.q > 0 && l.price == null).length;
 
@@ -51,6 +57,18 @@ export function TemplateEditor({ template, lines, options, editable, canWrite, c
                 <span className="text-muted">{template.sizeLabel}</span>
               </div>
             </div>
+            {walls && (
+              <>
+                <div>
+                  <label className="label" htmlFor="preview-h">Height</label>
+                  <input id="preview-h" type="number" min={1.8} step="0.05" value={height} onChange={(e) => setHeight(Number(e.target.value) || 0)} className="input w-20" />
+                </div>
+                <div>
+                  <label className="label" htmlFor="preview-p">Perimeter</label>
+                  <input id="preview-p" inputMode="decimal" value={perimeterIn} onChange={(e) => setPerimeterIn(e.target.value)} placeholder={`≈ ${estimated}`} className="input w-24" />
+                </div>
+              </>
+            )}
             <div className="pb-2 text-right">
               <div className="text-lg font-semibold tabular-nums">{money(total, currency)}</div>
               <div className="text-xs text-muted">
@@ -65,8 +83,10 @@ export function TemplateEditor({ template, lines, options, editable, canWrite, c
             <thead className="text-left text-xs text-muted">
               <tr className="border-b border-line">
                 <th className="px-3 py-2">Partida</th>
-                <th className="px-3 py-2 text-right">Factor × size</th>
-                <th className="px-3 py-2 text-right">+ Fixed</th>
+                <th className="px-3 py-2 text-right" title="Quantity per unit of room size (m² of floor, or per window)">× size</th>
+                <th className="px-3 py-2 text-right" title="Quantity per metre of perimeter">× perimeter</th>
+                <th className="px-3 py-2 text-right" title="Quantity per m² of wall: perimeter × height − openings">× wall area</th>
+                <th className="px-3 py-2 text-right">+ fixed</th>
                 <th className="px-3 py-2">Note</th>
                 <th className="px-3 py-2 text-right">Quantity</th>
                 <th className="px-3 py-2 text-right">Price</th>
@@ -76,10 +96,10 @@ export function TemplateEditor({ template, lines, options, editable, canWrite, c
             </thead>
             <tbody>
               {preview.map((l) => (
-                <LineRow key={`${l.id}-${l.factor}-${l.fixed}-${l.note ?? ""}`} line={l} editable={editable} currency={currency} />
+                <LineRow key={`${l.id}-${l.factor}-${l.perPerimeter}-${l.perWallArea}-${l.fixed}-${l.note ?? ""}`} line={l} editable={editable} currency={currency} />
               ))}
               {preview.length === 0 && (
-                <tr><td colSpan={8} className="px-3 py-6 text-center text-muted">No lines yet.</td></tr>
+                <tr><td colSpan={10} className="px-3 py-6 text-center text-muted">No lines yet.</td></tr>
               )}
             </tbody>
           </table>
@@ -151,6 +171,12 @@ function LineRow({ line, editable, currency }: { line: EditorLine & { q: number;
             <input form={formId} name="factor" defaultValue={line.factor} onChange={() => setDirty(true)} className="input w-20 py-1 text-right tabular-nums" inputMode="decimal" />
           </td>
           <td className="px-3 py-1.5 text-right">
+            <input form={formId} name="per_perimeter" defaultValue={line.perPerimeter} onChange={() => setDirty(true)} className="input w-20 py-1 text-right tabular-nums" inputMode="decimal" />
+          </td>
+          <td className="px-3 py-1.5 text-right">
+            <input form={formId} name="per_wall_area" defaultValue={line.perWallArea} onChange={() => setDirty(true)} className="input w-20 py-1 text-right tabular-nums" inputMode="decimal" />
+          </td>
+          <td className="px-3 py-1.5 text-right">
             <input form={formId} name="fixed" defaultValue={line.fixed} onChange={() => setDirty(true)} className="input w-20 py-1 text-right tabular-nums" inputMode="decimal" />
           </td>
           <td className="px-3 py-1.5">
@@ -159,8 +185,10 @@ function LineRow({ line, editable, currency }: { line: EditorLine & { q: number;
         </>
       ) : (
         <>
-          <td className="px-3 py-2 text-right tabular-nums">{qty(line.factor)}</td>
-          <td className="px-3 py-2 text-right tabular-nums">{qty(line.fixed)}</td>
+          <td className="px-3 py-2 text-right tabular-nums">{line.factor ? qty(line.factor) : ""}</td>
+          <td className="px-3 py-2 text-right tabular-nums">{line.perPerimeter ? qty(line.perPerimeter) : ""}</td>
+          <td className="px-3 py-2 text-right tabular-nums">{line.perWallArea ? qty(line.perWallArea) : ""}</td>
+          <td className="px-3 py-2 text-right tabular-nums">{line.fixed ? qty(line.fixed) : ""}</td>
           <td className="px-3 py-2 text-xs text-muted">{line.note}</td>
         </>
       )}
@@ -185,7 +213,7 @@ function AddLine({ templateId, options }: { templateId: string; options: Partida
   const [state, run, pending] = useActionState(addTemplateLine, null);
   const chapters = [...new Set(options.map((o) => o.chapter))];
   return (
-    <form action={run} className="card grid items-end gap-3 p-4 md:grid-cols-[1fr_6rem_6rem_1fr_auto]">
+    <form action={run} className="card grid items-end gap-3 p-4 md:grid-cols-[1fr_5rem_5rem_5rem_5rem_1fr_auto]">
       <input type="hidden" name="template_id" value={templateId} />
       <div>
         <label className="label" htmlFor="a-partida">Add partida</label>
@@ -201,8 +229,16 @@ function AddLine({ templateId, options }: { templateId: string; options: Partida
         </select>
       </div>
       <div>
-        <label className="label" htmlFor="a-factor">Factor</label>
-        <input id="a-factor" name="factor" className="input text-right" defaultValue="1" inputMode="decimal" />
+        <label className="label" htmlFor="a-factor">× size</label>
+        <input id="a-factor" name="factor" className="input text-right" defaultValue="0" inputMode="decimal" />
+      </div>
+      <div>
+        <label className="label" htmlFor="a-perim">× perim.</label>
+        <input id="a-perim" name="per_perimeter" className="input text-right" defaultValue="0" inputMode="decimal" />
+      </div>
+      <div>
+        <label className="label" htmlFor="a-wall">× walls</label>
+        <input id="a-wall" name="per_wall_area" className="input text-right" defaultValue="0" inputMode="decimal" />
       </div>
       <div>
         <label className="label" htmlFor="a-fixed">Fixed</label>
@@ -215,8 +251,11 @@ function AddLine({ templateId, options }: { templateId: string; options: Partida
       <div className="flex items-center gap-2">
         <button className="btn" disabled={pending}>{pending ? "…" : "Add"}</button>
       </div>
-      {state?.error && <p className="text-sm text-accent md:col-span-5">{state.error}</p>}
-      <p className="text-xs text-muted md:col-span-5">Quantity = factor × room size + fixed. Factor 3.7 on wall tiling means 3.7 m² of tiles per m² of bathroom floor.</p>
+      {state?.error && <p className="text-sm text-accent md:col-span-7">{state.error}</p>}
+      <p className="text-xs text-muted md:col-span-7">
+        Quantity = a × size + b × perimeter + c × wall area + fixed. Flooring: 1 × size. Skirting: 1 × perimeter. Tiling to the ceiling: 1 × wall area;
+        to 1.2 m on a 2.6 m wall: 0.46 × wall area. A shower tray: fixed 1.
+      </p>
     </form>
   );
 }

@@ -111,13 +111,15 @@ export async function addTemplateLine(_p: State, fd: FormData): Promise<State> {
   const partidaId = s(fd, "partida_id");
   if (!partidaId) return { error: "Choose a partida." };
   const factor = toNumber(fd.get("factor")) ?? 0;
+  const perPerimeter = toNumber(fd.get("per_perimeter")) ?? 0;
+  const perWallArea = toNumber(fd.get("per_wall_area")) ?? 0;
   const fixed = toNumber(fd.get("fixed")) ?? 0;
-  if (factor === 0 && fixed === 0) return { error: "Give a factor, a fixed quantity, or both." };
+  if (factor === 0 && perPerimeter === 0 && perWallArea === 0 && fixed === 0) return { error: "Give at least one of: per size, per perimeter, per wall area, fixed." };
   const supabase = await createClient();
   const { data: last } = await supabase.from("room_template_lines").select("sequence").eq("template_id", templateId).order("sequence", { ascending: false }).limit(1).maybeSingle();
   const { error } = await supabase
     .from("room_template_lines")
-    .insert({ template_id: templateId, partida_id: partidaId, factor, fixed, note: s(fd, "note"), sequence: (last?.sequence ?? 0) + 1 });
+    .insert({ template_id: templateId, partida_id: partidaId, factor, per_perimeter: perPerimeter, per_wall_area: perWallArea, fixed, note: s(fd, "note"), sequence: (last?.sequence ?? 0) + 1 });
   if (error) return { error: error.code === "23505" ? "That partida is already in the template." : error.message };
   return done("Line added.", templateId);
 }
@@ -129,7 +131,10 @@ export async function updateTemplateLine(_p: State, fd: FormData): Promise<State
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("room_template_lines")
-    .update({ factor: toNumber(fd.get("factor")) ?? 0, fixed: toNumber(fd.get("fixed")) ?? 0, note: s(fd, "note") })
+    .update({
+      factor: toNumber(fd.get("factor")) ?? 0, per_perimeter: toNumber(fd.get("per_perimeter")) ?? 0,
+      per_wall_area: toNumber(fd.get("per_wall_area")) ?? 0, fixed: toNumber(fd.get("fixed")) ?? 0, note: s(fd, "note"),
+    })
     .eq("id", id)
     .select("template_id")
     .maybeSingle();

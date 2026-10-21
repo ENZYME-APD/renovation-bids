@@ -232,9 +232,10 @@ const READ: ToolDef[] = [
     inputSchema: schema({ version_id: P("Version id"), project: P("Project code, id or name"), version: P("Version label, e.g. A") }),
     run: async (a, ctx) => {
       const v = await version(ctx.db, a);
-      const [lines, chapters] = await Promise.all([
-        ctx.db.from("line_items").select("id, quantity, unit_price, total, state, confidence, notes, room, source, source_ref, overridden, partidas(code, short_description, unit, trades(code, name))").eq("version_id", v.id).order("created_at"),
+      const [lines, chapters, rooms] = await Promise.all([
+        ctx.db.from("line_items").select("id, quantity, unit_price, total, state, confidence, notes, room, room_id, source, source_ref, overridden, partidas(code, short_description, unit, trades(code, name))").eq("version_id", v.id).order("created_at"),
         ctx.db.rpc("version_budget", { p_version: v.id }),
+        ctx.db.from("rooms").select("id, name, size, perimeter, height, openings, perimeter_estimated, height_assumed, source, source_ref").eq("version_id", v.id).order("created_at"),
       ]);
       const ch = check(chapters);
       return {
@@ -243,8 +244,10 @@ const READ: ToolDef[] = [
         lines: check(lines).map((l) => ({
           line_id: l.id, code: l.partidas?.code, description: l.partidas?.short_description, unit: l.partidas?.unit,
           chapter: l.partidas?.trades?.name, quantity: Number(l.quantity), unit_price: l.unit_price == null ? null : Number(l.unit_price),
-          total: l.total == null ? null : Number(l.total), state: l.state, confidence: l.confidence, room: l.room, notes: l.notes,
+          total: l.total == null ? null : Number(l.total), state: l.state, confidence: l.confidence, room: l.room, room_id: l.room_id, notes: l.notes,
+          source: l.source, overridden: l.overridden,
         })),
+        rooms: check(rooms).map((r) => ({ room_id: r.id, ...r, id: undefined })),
         chapters: ch,
         subtotal: ch.reduce((t, c) => t + Number(c.subtotal ?? 0), 0),
       };
@@ -473,13 +476,13 @@ const WRITE: ToolDef[] = [
     writes: true,
     inputSchema: schema({
       project: P("Project code, id or name"), name: P("New name"), status: P("New status", "string", { enum: PROJECT_STATUS }), address: P("Address"), district: P("District"),
-      area_m2: P("Area in m²", "number"), client_budget: P("Client budget", "number"), contract_value: P("Signed contract value", "number"), outcome_reason: P("Why it was won or lost"),
+      area_m2: P("Area in m²", "number"), room_height: P("Typical floor-to-ceiling height in m, used for rooms without one", "number"), client_budget: P("Client budget", "number"), contract_value: P("Signed contract value", "number"), outcome_reason: P("Why it was won or lost"),
     }, ["project"]),
     run: async (a, ctx) => {
       const p = await project(ctx.db, str(a, "project", true));
       const patch: Database["public"]["Tables"]["projects"]["Update"] = {};
       for (const k of ["name", "address", "district", "outcome_reason"] as const) if (str(a, k) !== undefined) patch[k] = str(a, k);
-      for (const k of ["area_m2", "client_budget", "contract_value"] as const) if (num(a, k) !== undefined) patch[k] = num(a, k);
+      for (const k of ["area_m2", "room_height", "client_budget", "contract_value"] as const) if (num(a, k) !== undefined) patch[k] = num(a, k);
       const status = oneOf(a, "status", PROJECT_STATUS);
       if (status) patch.status = status;
       if (!Object.keys(patch).length) throw new ToolError("Nothing to change.");
@@ -508,9 +511,7 @@ const WRITE: ToolDef[] = [
       let copied = 0;
       if (from) {
         const src = await version(ctx.db, { project: p.id, version: from });
-        const lines = check(await ctx.db.from("line_items").select("partida_id, quantity, unit_price, price_id, confidence, state, archicad_element_ids, notes, room, source, source_ref, template_id, overridden").eq("version_id", src.id));
-        if (lines.length) check(await db.from("line_items").insert(lines.map((l) => ({ ...l, organization_id: ctx.studio.id, version_id: v.id }))));
-        copied = lines.length;
+        copied = check(await db.rpc("copy_version_contents", { p_from: src.id, p_to: v.id }));
       }
       return done(changeId, { version: v, lines_copied: copied });
     },
@@ -518,11 +519,12 @@ const WRITE: ToolDef[] = [
   {
     name: "add_room",
     title: "Add a room",
-    description: "Add a room from a template (list_room_templates): its standard lines with quantities scaled to the size, each tagged with the room name. Omit template to pick it from the room name or zone category (match_terms). Works the same whether rooms come from Archicad zones, another BIM tool, a drawing, or your own assumptions: set source and source_ref (e.g. the zone id) so later syncs can find the lines.",
+    description: "Add a room from a template (list_room_templates). Lines scale with the floor area (size), the perimeter (skirting) and the wall area = perimeter × height − openings (paint, tiling). Give perimeter, height and openings when known: Archicad zones carry them, and a dimensioned plan sketch lets you work them out (state your reading). Without a perimeter it is estimated as a 1:1.5 rectangle and flagged; without a height the project's or studio's default is used. Omit template to pick it from the room name or zone category (match_terms). Set source (model_zone, ai_assumption for a sketch or photos, import…) and source_ref (e.g. the zone id) so later syncs find the room.",
     writes: true,
     inputSchema: schema({
       version_id: P("Version id"), project: P("Project (uses its main version)"), version: P("Version label"), template: P("Template code or id; omit to match by label/category"),
       size: P("Room size in the template's unit (m² of floor, or number of windows)", "number"), label: P("Name for the room, e.g. 'Baño principal'"), category: P("Zone category, if different from the name"),
+      height: P("Floor-to-ceiling height in m", "number"), perimeter: P("Room perimeter in m", "number"), openings: P("Area of doors and windows in its walls, m²", "number"),
       source: P(SOURCE_HELP, "string", { enum: LINE_SOURCE }), source_ref: P("Stable id in the source, e.g. the Archicad zone GUID"),
     }, ["size"]),
     run: async (a, ctx) => {
@@ -542,10 +544,32 @@ const WRITE: ToolDef[] = [
       }
       const source = oneOf(a, "source", LINE_SOURCE) ?? "template";
       const { db, changeId } = ctx.change();
-      const n = check(await db.rpc("apply_room_template", {
-        p_version: v.id, p_template: t.id, p_size: num(a, "size", true), p_label: str(a, "label"), p_source: source, p_source_ref: str(a, "source_ref"),
+      const roomId = check(await db.rpc("add_room", {
+        p_version: v.id, p_template: t.id, p_size: num(a, "size", true), p_name: str(a, "label"), p_height: num(a, "height"),
+        p_perimeter: num(a, "perimeter"), p_openings: num(a, "openings") ?? 0, p_source: source, p_source_ref: str(a, "source_ref"),
       }));
-      return done(changeId, { version: v.label, template: t.name, lines_added: n, source });
+      const room = check(await ctx.db.from("rooms").select("id, name, size, perimeter, height, openings, perimeter_estimated, height_assumed").eq("id", roomId).single());
+      const { count } = await ctx.db.from("line_items").select("id", { count: "exact", head: true }).eq("room_id", roomId);
+      return done(changeId, { version: v.label, template: t.name, room, lines_added: count ?? 0, source });
+    },
+  },
+  {
+    name: "update_room",
+    title: "Update a room",
+    description: "Change a room's name or measurements (room_id from get_version_budget). Its template lines are recalculated; lines edited by hand keep their quantities. Use it when a zone is re-measured, the model changes, or an estimate is confirmed.",
+    writes: true,
+    inputSchema: schema({
+      room_id: P("Room id"), name: P("New name"), size: P("Floor area (or count)", "number"), height: P("Height in m", "number"),
+      perimeter: P("Perimeter in m", "number"), openings: P("Doors and windows, m²", "number"), estimate_perimeter: P("Re-estimate the perimeter from the area", "boolean"),
+    }, ["room_id"]),
+    run: async (a, ctx) => {
+      const { db, changeId } = ctx.change();
+      const n = check(await db.rpc("update_room", {
+        p_room: str(a, "room_id", true), p_name: str(a, "name"), p_size: num(a, "size"), p_height: num(a, "height"),
+        p_perimeter: num(a, "perimeter"), p_openings: num(a, "openings"), p_estimate_perimeter: a.estimate_perimeter === true,
+      }));
+      const room = check(await ctx.db.from("rooms").select("id, name, size, perimeter, height, openings, perimeter_estimated, height_assumed").eq("id", str(a, "room_id", true)).single());
+      return done(changeId, { room, lines_recalculated: n });
     },
   },
   {
