@@ -9,6 +9,7 @@ import { setProjectRoomHeight, updateProjectStatus } from "../actions";
 import { NewVersionForm } from "./new-version-form";
 import { ClientRequests, NewChangeOrderButton, PhaseStepper, SignContractButton } from "./lifecycle";
 import { VersionCompare, type CompareLine } from "./version-compare";
+import { DeleteProject } from "./delete-project";
 import { modelToolLabel } from "@/lib/model-tools";
 import { unitLabel } from "@/lib/format";
 
@@ -261,6 +262,12 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
           return { ...r, changeOrder: co ? { id: co.id, number: co.number } : null };
         })}
       />
+      {studio.isAdmin && (
+        <section className="flex items-center justify-between border-t border-line pt-6 text-sm">
+          <p className="text-muted">Owners and admins can delete a project; it can be undone from Settings → Activity.</p>
+          <DeleteProject id={project.id} code={project.code} name={project.name} />
+        </section>
+      )}
     </div>
   );
 }
