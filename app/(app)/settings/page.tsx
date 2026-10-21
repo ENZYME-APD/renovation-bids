@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageIntro } from "@/components/page-intro";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { getUser, requireStudio, type Role } from "@/lib/dal";
@@ -37,6 +38,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
       <header>
         <p className="eyebrow">{studio.name}</p>
         <h1 className="text-2xl font-semibold">Settings</h1>
+        <PageIntro wiki="settings-and-roles">Your profile, the studio&apos;s defaults, the team and their roles, AI access, and the log of every change with undo.</PageIntro>
       </header>
       <nav className="flex flex-wrap gap-1 border-b border-line">
         {TABS.map(([k, label]) => (

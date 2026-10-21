@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageIntro } from "@/components/page-intro";
 import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/dal";
 import { humanize, money } from "@/lib/format";
@@ -21,6 +22,7 @@ export default async function ProjectsPage({ searchParams }: PageProps<"/project
         <div>
           <p className="eyebrow">{studio.name}</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight">Projects</h1>
+          <PageIntro wiki="bid-workflow">One project per job, from first call to won or lost. Open a project to build its budget; until it is won, a bid has one standard version.</PageIntro>
         </div>
         {studio.canWrite && <NewProjectButton initialOpen={openNew} />}
       </div>
