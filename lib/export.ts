@@ -53,3 +53,11 @@ export async function exportResponse(format: string | null, baseName: string, sh
     },
   });
 }
+
+/** JSON download, same naming as the other formats. */
+export function jsonResponse(baseName: string, body: unknown) {
+  const name = slug(baseName) || "export";
+  return new Response(JSON.stringify(body, null, 2), {
+    headers: { "Content-Type": "application/json; charset=utf-8", "Content-Disposition": `attachment; filename="${name}.json"` },
+  });
+}

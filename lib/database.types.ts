@@ -377,20 +377,26 @@ export type Database = {
       line_items: {
         Row: {
           archicad_element_ids: string[]
+          client_note: string | null
           confidence: Database["public"]["Enums"]["confidence"] | null
           created_at: string
+          description: string | null
           id: string
+          measurement_note: string | null
           notes: string | null
           organization_id: string
           overridden: boolean
           partida_id: string
           price_id: string | null
           quantity: number
+          reference_price: number | null
+          reference_source: string | null
           room: string | null
           room_id: string | null
           source: Database["public"]["Enums"]["line_source"]
           source_ref: string | null
           state: Database["public"]["Enums"]["line_state"]
+          supplied_by: Database["public"]["Enums"]["supplied_by"]
           template_id: string | null
           total: number | null
           unit_price: number | null
@@ -399,20 +405,26 @@ export type Database = {
         }
         Insert: {
           archicad_element_ids?: string[]
+          client_note?: string | null
           confidence?: Database["public"]["Enums"]["confidence"] | null
           created_at?: string
+          description?: string | null
           id?: string
+          measurement_note?: string | null
           notes?: string | null
           organization_id: string
           overridden?: boolean
           partida_id: string
           price_id?: string | null
           quantity?: number
+          reference_price?: number | null
+          reference_source?: string | null
           room?: string | null
           room_id?: string | null
           source?: Database["public"]["Enums"]["line_source"]
           source_ref?: string | null
           state?: Database["public"]["Enums"]["line_state"]
+          supplied_by?: Database["public"]["Enums"]["supplied_by"]
           template_id?: string | null
           total?: never
           unit_price?: number | null
@@ -421,20 +433,26 @@ export type Database = {
         }
         Update: {
           archicad_element_ids?: string[]
+          client_note?: string | null
           confidence?: Database["public"]["Enums"]["confidence"] | null
           created_at?: string
+          description?: string | null
           id?: string
+          measurement_note?: string | null
           notes?: string | null
           organization_id?: string
           overridden?: boolean
           partida_id?: string
           price_id?: string | null
           quantity?: number
+          reference_price?: number | null
+          reference_source?: string | null
           room?: string | null
           room_id?: string | null
           source?: Database["public"]["Enums"]["line_source"]
           source_ref?: string | null
           state?: Database["public"]["Enums"]["line_state"]
+          supplied_by?: Database["public"]["Enums"]["supplied_by"]
           template_id?: string | null
           total?: never
           unit_price?: number | null
@@ -476,6 +494,69 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "versions"
             referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
+      line_measurements: {
+        Row: {
+          count: number | null
+          created_at: string
+          height: number | null
+          id: string
+          label: string | null
+          length: number | null
+          line_id: string
+          organization_id: string
+          partial: number | null
+          sequence: number
+          source: Database["public"]["Enums"]["line_source"]
+          source_ref: string | null
+          width: number | null
+        }
+        Insert: {
+          count?: number | null
+          created_at?: string
+          height?: number | null
+          id?: string
+          label?: string | null
+          length?: number | null
+          line_id: string
+          organization_id: string
+          partial?: never
+          sequence?: number
+          source?: Database["public"]["Enums"]["line_source"]
+          source_ref?: string | null
+          width?: number | null
+        }
+        Update: {
+          count?: number | null
+          created_at?: string
+          height?: number | null
+          id?: string
+          label?: string | null
+          length?: number | null
+          line_id?: string
+          organization_id?: string
+          partial?: never
+          sequence?: number
+          source?: Database["public"]["Enums"]["line_source"]
+          source_ref?: string | null
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "line_measurements_line_id_organization_id_fkey"
+            columns: ["line_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "line_items"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "line_measurements_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1854,6 +1935,7 @@ export type Database = {
           archicad_option: string | null
           created_at: string
           description: string | null
+          general_notes: string | null
           id: string
           label: string
           locked: boolean
@@ -1870,6 +1952,7 @@ export type Database = {
           archicad_option?: string | null
           created_at?: string
           description?: string | null
+          general_notes?: string | null
           id?: string
           label: string
           locked?: boolean
@@ -1886,6 +1969,7 @@ export type Database = {
           archicad_option?: string | null
           created_at?: string
           description?: string | null
+          general_notes?: string | null
           id?: string
           label?: string
           locked?: boolean
@@ -2119,6 +2203,7 @@ export type Database = {
         Row: {
           budget_high: number | null
           budget_low: number | null
+          client_total: number | null
           lines: number | null
           organization_id: string | null
           priced_lines: number | null
@@ -2185,6 +2270,14 @@ export type Database = {
           role: Database["public"]["Enums"]["member_role"]
           studio: string
         }[]
+      }
+      import_budget: {
+        Args: { p_delete_missing?: boolean; p_general_notes?: string; p_lines: Json; p_version: string }
+        Returns: Json
+      }
+      import_catalogue: {
+        Args: { p_org: string; p_rows: Json }
+        Returns: Json
       }
       join_studio_by_domain: {
         Args: { p_org: string }
@@ -2259,6 +2352,7 @@ export type Database = {
       project_phase: "bid" | "design" | "construction" | "closed"
       project_status: "lead" | "qualifying" | "no_go" | "site_visit" | "design" | "pricing" | "offer_sent" | "won" | "lost" | "on_hold"
       rfq_status: "draft" | "approved" | "sent" | "reminded" | "replied" | "expired" | "cancelled"
+      supplied_by: "contractor" | "client"
       supplier_type: "subcontractor" | "manufacturer" | "distributor" | "professional"
       supply_by: "enzyme" | "contractor" | "owner"
       unit: "m2" | "m" | "m3" | "ud" | "kg" | "h" | "pa"
@@ -2408,6 +2502,7 @@ export const Constants = {
       project_phase: ["bid", "design", "construction", "closed"],
       project_status: ["lead", "qualifying", "no_go", "site_visit", "design", "pricing", "offer_sent", "won", "lost", "on_hold"],
       rfq_status: ["draft", "approved", "sent", "reminded", "replied", "expired", "cancelled"],
+      supplied_by: ["contractor", "client"],
       supplier_type: ["subcontractor", "manufacturer", "distributor", "professional"],
       supply_by: ["enzyme", "contractor", "owner"],
       unit: ["m2", "m", "m3", "ud", "kg", "h", "pa"],

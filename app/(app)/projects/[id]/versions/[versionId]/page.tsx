@@ -29,7 +29,7 @@ export default async function VersionPage({ params, searchParams }: PageProps<"/
     supabase.rpc("version_budget", { p_version: versionId }),
     supabase
       .from("line_items")
-      .select("id, quantity, unit_price, confidence, state, total, notes, room, room_id, source, overridden, updated_at, partidas(id, code, short_description, unit, trades(id, code, name, sequence))")
+      .select("id, quantity, unit_price, confidence, state, total, notes, room, room_id, source, overridden, updated_at, supplied_by, description, client_note, measurement_note, reference_price, reference_source, line_measurements(label, count, length, width, height, partial, sequence), partidas(id, code, short_description, long_description, unit, trades(id, code, name, sequence))")
       .eq("version_id", versionId)
       .order("created_at", { ascending: true }),
     supabase
@@ -72,6 +72,7 @@ export default async function VersionPage({ params, searchParams }: PageProps<"/
   const lines = linesRes.data;
   const priceByPartida = new Map((pricesRes.data ?? []).map((p) => [p.partida_id, Number(p.unit_price)]));
 
+  const clientTotal = lines.filter((l) => l.supplied_by === "client").reduce((t, l) => t + Number(l.total ?? 0), 0);
   const totals = budget.reduce(
     (t, r) => ({ sub: t.sub + Number(r.subtotal), low: t.low + Number(r.budget_low), high: t.high + Number(r.budget_high) }),
     { sub: 0, low: 0, high: 0 },
@@ -98,6 +99,17 @@ export default async function VersionPage({ params, searchParams }: PageProps<"/
       source: l.source,
       overridden: l.overridden,
       roomId: l.room_id,
+      supplied: l.supplied_by,
+      jobDescription: l.description,
+      longDescription: l.partidas?.long_description ?? null,
+      clientNote: l.client_note,
+      measurementNote: l.measurement_note,
+      referencePrice: l.reference_price == null ? null : Number(l.reference_price),
+      referenceSource: l.reference_source,
+      measurements: [...(l.line_measurements ?? [])].sort((a, b) => a.sequence - b.sequence).map((m) => ({
+        label: m.label, count: m.count == null ? null : Number(m.count), length: m.length == null ? null : Number(m.length),
+        width: m.width == null ? null : Number(m.width), height: m.height == null ? null : Number(m.height), partial: Number(m.partial),
+      })),
       sequence: t?.sequence ?? 999,
       chapterKey: t?.id ?? "none",
     };
@@ -182,8 +194,9 @@ export default async function VersionPage({ params, searchParams }: PageProps<"/
           </p>
         </div>
         <div className="card p-5">
-          <p className="text-xs text-muted">Priced subtotal</p>
+          <p className="text-xs text-muted">Priced subtotal (contract)</p>
           <p className="mt-1 text-2xl font-semibold tabular-nums">{money(totals.sub)}</p>
+          {clientTotal > 0 && <p className="mt-1 text-xs text-muted">+ {money(clientTotal)} bought by the client, not in the contract</p>}
         </div>
         <div className="card p-5">
           <p className="text-xs text-muted">Lines priced</p>

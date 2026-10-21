@@ -55,6 +55,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
     ? await supabase
         .from("line_items")
         .select("version_id, quantity, total, room, partidas(code, short_description, unit, trades(id, code, name, sequence))")
+        .eq("supplied_by", "contractor")
         .in("version_id", versions.map((v) => v.id))
         .limit(20000)
     : { data: [] };

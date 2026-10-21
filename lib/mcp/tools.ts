@@ -1,5 +1,5 @@
 import "server-only";
-import type { Database } from "@/lib/database.types";
+import type { Database, Json as DbJson } from "@/lib/database.types";
 import { describe, groupChanges, type ActivityRow } from "@/lib/activity";
 import { effectiveCatalogue } from "@/lib/catalogue";
 import type { Db, McpContext } from "./context";
@@ -233,7 +233,7 @@ const READ: ToolDef[] = [
     run: async (a, ctx) => {
       const v = await version(ctx.db, a);
       const [lines, chapters, rooms] = await Promise.all([
-        ctx.db.from("line_items").select("id, quantity, unit_price, total, state, confidence, notes, room, room_id, source, source_ref, overridden, partidas(code, short_description, unit, trades(code, name))").eq("version_id", v.id).order("created_at"),
+        ctx.db.from("line_items").select("id, quantity, unit_price, total, state, confidence, notes, room, room_id, source, source_ref, overridden, supplied_by, description, client_note, measurement_note, reference_price, reference_source, partidas(code, short_description, unit, trades(code, name))").eq("version_id", v.id).order("created_at"),
         ctx.db.rpc("version_budget", { p_version: v.id }),
         ctx.db.from("rooms").select("id, name, size, perimeter, height, openings, perimeter_estimated, height_assumed, source, source_ref").eq("version_id", v.id).order("created_at"),
       ]);
@@ -245,7 +245,8 @@ const READ: ToolDef[] = [
           line_id: l.id, code: l.partidas?.code, description: l.partidas?.short_description, unit: l.partidas?.unit,
           chapter: l.partidas?.trades?.name, quantity: Number(l.quantity), unit_price: l.unit_price == null ? null : Number(l.unit_price),
           total: l.total == null ? null : Number(l.total), state: l.state, confidence: l.confidence, room: l.room, room_id: l.room_id, notes: l.notes,
-          source: l.source, overridden: l.overridden,
+          source: l.source, overridden: l.overridden, supplied_by: l.supplied_by, offer_description: l.description, client_note: l.client_note,
+          measurement_note: l.measurement_note, reference_price: l.reference_price == null ? null : Number(l.reference_price), reference_source: l.reference_source,
         })),
         rooms: check(rooms).map((r) => ({ room_id: r.id, ...r, id: undefined })),
         chapters: ch,
@@ -573,6 +574,26 @@ const WRITE: ToolDef[] = [
     },
   },
   {
+    name: "import_budget_lines",
+    title: "Import budget lines",
+    description: "Add or update many lines of a version in one step (one change_id, all or nothing). Use it to load a budget taken from a model, a spreadsheet or drawings. Each line: code (catalogue code; a new code becomes a studio partida and then needs title, unit m2|m|m3|ud|kg|h|pa and chapter code like DEM, PAV, ELE), quantity or measurements [{label, count, length, width, height}] (quantity = sum of count × length × width × height), unit_price, room, supplied_by, description, client_note, measurement_note, notes, reference_price, reference_source; give id (from get_version_budget) to update an existing line instead. Before calling, show the user what will be added and the total, and wait for confirmation.",
+    writes: true,
+    inputSchema: schema({
+      version_id: P("Version id"), project: P("Project (uses its main version)"), version: P("Version label"),
+      lines: P("Lines to import", "array", { items: { type: "object" } }), delete_missing: P("Delete lines of the version not in the list", "boolean"),
+      general_notes: P("General notes printed at the end of the budget"),
+    }, ["lines"]),
+    run: async (a, ctx) => {
+      const v = await version(ctx.db, a);
+      if (!Array.isArray(a.lines) || !a.lines.length) throw new ToolError("lines must be a non-empty list.");
+      const { db, changeId } = ctx.change();
+      const r = check(await db.rpc("import_budget", {
+        p_version: v.id, p_lines: a.lines as unknown as DbJson, p_delete_missing: a.delete_missing === true, p_general_notes: str(a, "general_notes"),
+      }));
+      return done(changeId, { version: v.label, result: r });
+    },
+  },
+  {
     name: "add_line",
     title: "Add a budget line",
     description: "Add a partida to a version's budget. Without unit_price, the studio's best current price is used.",
@@ -600,12 +621,15 @@ const WRITE: ToolDef[] = [
   {
     name: "update_line",
     title: "Update budget lines",
-    description: "Change one or several lines at once (line_ids from get_version_budget): quantity or a quantity factor, unit price, confidence, state (unpriced, priced, needs_rfq, quoted), room (empty string clears it) or notes. All lines change in one change_id.",
+    description: "Change one or several lines at once (line_ids from get_version_budget): quantity or a quantity factor, unit price, confidence, state (unpriced, priced, needs_rfq, quoted), room (empty string clears it), internal notes, who supplies it (contractor or client), the offer texts (description, client_note, measurement_note) or a reference price. All lines change in one change_id.",
     writes: true,
     inputSchema: schema({
       line_ids: P("Line ids", "array", { items: { type: "string" } }), line_id: P("A single line id (instead of line_ids)"),
       quantity: P("New quantity", "number"), quantity_factor: P("Multiply quantities by this, e.g. 1.1", "number"), unit_price: P("Unit price", "number"),
-      confidence: P("Confidence", "string", { enum: ["high", "medium", "low"] }), state: P("State", "string", { enum: LINE_STATE }), room: P("Room; empty string clears it"), notes: P("Notes"),
+      confidence: P("Confidence", "string", { enum: ["high", "medium", "low"] }), state: P("State", "string", { enum: LINE_STATE }), room: P("Room; empty string clears it"), notes: P("Internal note, never printed"),
+      supplied_by: P("contractor (in the works contract) or client (the client buys it)", "string", { enum: ["contractor", "client"] }),
+      description: P("Job-specific description for the offer; empty string = use the catalogue text"), client_note: P("Note printed for the client"),
+      measurement_note: P("How the quantity was measured, printed"), reference_price: P("A price the client brought from elsewhere", "number"), reference_source: P("Where that price came from"),
     }),
     run: async (a, ctx) => {
       const ids = lineIds(a);
@@ -618,6 +642,10 @@ const WRITE: ToolDef[] = [
       if (state) patch.state = state;
       if (a.room !== undefined) patch.room = String(a.room ?? "").trim() || null;
       if (str(a, "notes") !== undefined) patch.notes = str(a, "notes");
+      const supplied = oneOf(a, "supplied_by", ["contractor", "client"] as const);
+      if (supplied) patch.supplied_by = supplied;
+      for (const k of ["description", "client_note", "measurement_note", "reference_source"] as const) if (a[k] !== undefined) patch[k] = String(a[k] ?? "").trim() || null;
+      if (num(a, "reference_price") !== undefined) patch.reference_price = num(a, "reference_price");
       const factor = num(a, "quantity_factor");
       if (!Object.keys(patch).length && factor === undefined) throw new ToolError("Nothing to change.");
       if (factor !== undefined && !(factor > 0)) throw new ToolError("quantity_factor must be more than 0.");

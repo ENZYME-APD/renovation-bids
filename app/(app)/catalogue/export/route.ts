@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getStudio } from "@/lib/dal";
 import { effectiveCatalogue } from "@/lib/catalogue";
-import { exportResponse, type Sheet } from "@/lib/export";
+import { exportResponse, jsonResponse, type Sheet } from "@/lib/export";
 import { unitLabel } from "@/lib/format";
 
 // Catalogue export: the studio's effective catalogue with current prices.
@@ -37,5 +37,18 @@ export async function GET(req: Request) {
       { header: "Reference", value: (i) => i.reference_code },
     ],
   };
-  return exportResponse(new URL(req.url).searchParams.get("format"), `${studio.name} catalogue`, [sheet], studio.currency);
+  const format = new URL(req.url).searchParams.get("format");
+  if (format === "json") {
+    return jsonResponse(`${studio.name} catalogue`, {
+      format: "renovation-bids/catalogue@1",
+      partidas: items.map((i) => {
+        const pr = p.get(i.id);
+        return {
+          code: i.code, chapter: t.get(i.trade_id)?.code ?? null, title: i.short_description, long_description: i.long_description, unit: i.unit,
+          reference_code: i.reference_code, price: pr ? Number(pr.unit_price) : null, confidence: pr?.confidence ?? null, type: i.kind,
+        };
+      }),
+    });
+  }
+  return exportResponse(format, `${studio.name} catalogue`, [sheet], studio.currency);
 }
