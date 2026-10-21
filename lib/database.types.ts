@@ -79,6 +79,146 @@ export type Database = {
           },
         ]
       }
+      change_order_lines: {
+        Row: {
+          change_order_id: string
+          created_at: string
+          description: string
+          id: string
+          organization_id: string
+          partida_id: string | null
+          quantity: number
+          room: string | null
+          total: number | null
+          unit: Database["public"]["Enums"]["unit"]
+          unit_price: number
+        }
+        Insert: {
+          change_order_id: string
+          created_at?: string
+          description: string
+          id?: string
+          organization_id: string
+          partida_id?: string | null
+          quantity: number
+          room?: string | null
+          total?: never
+          unit?: Database["public"]["Enums"]["unit"]
+          unit_price?: number
+        }
+        Update: {
+          change_order_id?: string
+          created_at?: string
+          description?: string
+          id?: string
+          organization_id?: string
+          partida_id?: string | null
+          quantity?: number
+          room?: string | null
+          total?: never
+          unit?: Database["public"]["Enums"]["unit"]
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "change_order_lines_change_order_id_organization_id_fkey"
+            columns: ["change_order_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "change_orders"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "change_order_lines_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "change_order_lines_partida_id_fkey"
+            columns: ["partida_id"]
+            isOneToOne: false
+            referencedRelation: "partidas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      change_orders: {
+        Row: {
+          approved_by: string | null
+          created_at: string
+          decided_on: string | null
+          decision_id: string | null
+          description: string | null
+          id: string
+          notes: string | null
+          number: number
+          organization_id: string
+          project_id: string
+          reason: Database["public"]["Enums"]["change_reason"]
+          sent_on: string | null
+          status: Database["public"]["Enums"]["change_order_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          approved_by?: string | null
+          created_at?: string
+          decided_on?: string | null
+          decision_id?: string | null
+          description?: string | null
+          id?: string
+          notes?: string | null
+          number?: number
+          organization_id: string
+          project_id: string
+          reason?: Database["public"]["Enums"]["change_reason"]
+          sent_on?: string | null
+          status?: Database["public"]["Enums"]["change_order_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          approved_by?: string | null
+          created_at?: string
+          decided_on?: string | null
+          decision_id?: string | null
+          description?: string | null
+          id?: string
+          notes?: string | null
+          number?: number
+          organization_id?: string
+          project_id?: string
+          reason?: Database["public"]["Enums"]["change_reason"]
+          sent_on?: string | null
+          status?: Database["public"]["Enums"]["change_order_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "change_orders_decision_id_organization_id_fkey"
+            columns: ["decision_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "decisions"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "change_orders_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "change_orders_project_id_organization_id_fkey"
+            columns: ["project_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "organization_id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           client_type: Database["public"]["Enums"]["client_type"]
@@ -762,7 +902,9 @@ export type Database = {
           client_budget: number | null
           client_id: string | null
           code: string
+          contract_signed_on: string | null
           contract_value: number | null
+          contract_version_id: string | null
           created_at: string
           district: string | null
           folder_url: string | null
@@ -772,6 +914,7 @@ export type Database = {
           name: string
           organization_id: string
           outcome_reason: string | null
+          phase: Database["public"]["Enums"]["project_phase"]
           status: Database["public"]["Enums"]["project_status"]
           updated_at: string
         }
@@ -784,7 +927,9 @@ export type Database = {
           client_budget?: number | null
           client_id?: string | null
           code?: string
+          contract_signed_on?: string | null
           contract_value?: number | null
+          contract_version_id?: string | null
           created_at?: string
           district?: string | null
           folder_url?: string | null
@@ -794,6 +939,7 @@ export type Database = {
           name: string
           organization_id: string
           outcome_reason?: string | null
+          phase?: Database["public"]["Enums"]["project_phase"]
           status?: Database["public"]["Enums"]["project_status"]
           updated_at?: string
         }
@@ -806,7 +952,9 @@ export type Database = {
           client_budget?: number | null
           client_id?: string | null
           code?: string
+          contract_signed_on?: string | null
           contract_value?: number | null
+          contract_version_id?: string | null
           created_at?: string
           district?: string | null
           folder_url?: string | null
@@ -816,6 +964,7 @@ export type Database = {
           name?: string
           organization_id?: string
           outcome_reason?: string | null
+          phase?: Database["public"]["Enums"]["project_phase"]
           status?: Database["public"]["Enums"]["project_status"]
           updated_at?: string
         }
@@ -825,6 +974,13 @@ export type Database = {
             columns: ["client_id", "organization_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "projects_contract_version_id_organization_id_fkey"
+            columns: ["contract_version_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "versions"
             referencedColumns: ["id", "organization_id"]
           },
           {
@@ -1585,6 +1741,7 @@ export type Database = {
           description: string | null
           id: string
           label: string
+          locked: boolean
           organization_id: string
           project_id: string
           status: Database["public"]["Enums"]["version_status"]
@@ -1596,6 +1753,7 @@ export type Database = {
           description?: string | null
           id?: string
           label: string
+          locked?: boolean
           organization_id: string
           project_id: string
           status?: Database["public"]["Enums"]["version_status"]
@@ -1607,6 +1765,7 @@ export type Database = {
           description?: string | null
           id?: string
           label?: string
+          locked?: boolean
           organization_id?: string
           project_id?: string
           status?: Database["public"]["Enums"]["version_status"]
@@ -1641,6 +1800,18 @@ export type Database = {
           project_name: string | null
           ref_id: string | null
           title: string | null
+        }
+        Relationships: []
+      }
+      change_order_totals: {
+        Row: {
+          change_order_id: string | null
+          lines: number | null
+          number: number | null
+          organization_id: string | null
+          project_id: string | null
+          status: Database["public"]["Enums"]["change_order_status"] | null
+          total: number | null
         }
         Relationships: []
       }
@@ -1696,6 +1867,24 @@ export type Database = {
         }
         Relationships: []
       }
+      project_budget_summary: {
+        Row: {
+          approved_changes: number | null
+          approved_count: number | null
+          contract_budget: number | null
+          contract_signed_on: string | null
+          contract_value: number | null
+          contract_version_id: string | null
+          current_budget: number | null
+          organization_id: string | null
+          pending_changes: number | null
+          pending_count: number | null
+          phase: Database["public"]["Enums"]["project_phase"] | null
+          project_id: string | null
+          status: Database["public"]["Enums"]["project_status"] | null
+        }
+        Relationships: []
+      }
       project_cost_by_trade: {
         Row: {
           budget: number | null
@@ -1722,10 +1911,12 @@ export type Database = {
       }
       project_money: {
         Row: {
+          approved_changes: number | null
           budget: number | null
           code: string | null
           committed: number | null
           contract_value: number | null
+          current_budget: number | null
           invoiced: number | null
           name: string | null
           organization_id: string | null
@@ -1733,6 +1924,7 @@ export type Database = {
           paid_labour: number | null
           paid_materials: number | null
           paid_out: number | null
+          phase: Database["public"]["Enums"]["project_phase"] | null
           project_id: string | null
           received_fees: number | null
           received_works: number | null
@@ -1756,6 +1948,7 @@ export type Database = {
           lines: number | null
           name: string | null
           organization_id: string | null
+          phase: Database["public"]["Enums"]["project_phase"] | null
           priced_lines: number | null
           project_id: string | null
           status: Database["public"]["Enums"]["project_status"] | null
@@ -1849,6 +2042,10 @@ export type Database = {
         Args: { p_po_line: string }
         Returns: string
       }
+      sign_contract: {
+        Args: { p_project: string; p_signed_on?: string; p_value?: number; p_version: string }
+        Returns: string
+      }
       studio_partida: {
         Args: { p_org: string; p_partida: string }
         Returns: string
@@ -1872,6 +2069,8 @@ export type Database = {
       }
     }
     Enums: {
+      change_order_status: "draft" | "sent" | "approved" | "rejected" | "cancelled"
+      change_reason: "client_request" | "design_change" | "site_condition" | "omission" | "other"
       client_type: "private" | "community" | "company"
       confidence: "high" | "medium" | "low"
       contact_source: "own" | "web" | "referral"
@@ -1884,6 +2083,7 @@ export type Database = {
       offer_status: "draft" | "sent" | "accepted" | "rejected" | "superseded"
       po_status: "draft" | "sent" | "confirmed" | "delivered" | "cancelled"
       price_source: "history" | "reference" | "quote" | "manual"
+      project_phase: "bid" | "design" | "construction" | "closed"
       project_status: "lead" | "qualifying" | "no_go" | "site_visit" | "design" | "pricing" | "offer_sent" | "won" | "lost" | "on_hold"
       rfq_status: "draft" | "approved" | "sent" | "reminded" | "replied" | "expired" | "cancelled"
       supplier_type: "subcontractor" | "manufacturer" | "distributor" | "professional"
@@ -2017,6 +2217,8 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      change_order_status: ["draft", "sent", "approved", "rejected", "cancelled"],
+      change_reason: ["client_request", "design_change", "site_condition", "omission", "other"],
       client_type: ["private", "community", "company"],
       confidence: ["high", "medium", "low"],
       contact_source: ["own", "web", "referral"],
@@ -2029,6 +2231,7 @@ export const Constants = {
       offer_status: ["draft", "sent", "accepted", "rejected", "superseded"],
       po_status: ["draft", "sent", "confirmed", "delivered", "cancelled"],
       price_source: ["history", "reference", "quote", "manual"],
+      project_phase: ["bid", "design", "construction", "closed"],
       project_status: ["lead", "qualifying", "no_go", "site_visit", "design", "pricing", "offer_sent", "won", "lost", "on_hold"],
       rfq_status: ["draft", "approved", "sent", "reminded", "replied", "expired", "cancelled"],
       supplier_type: ["subcontractor", "manufacturer", "distributor", "professional"],

@@ -33,11 +33,13 @@ The assistant acts **as you**: it sees exactly what you see and can change exact
 | Read | Change (asks first) |
 |---|---|
 | Studio overview and action items | Create and update projects |
-| Projects, budgets with rooms, line by line | Add rooms from templates, add lines |
+| Projects with phase, contract, change orders | Set the phase, sign the contract |
+| Budgets with rooms, line by line | Add rooms from templates, add lines |
 | Search the catalogue with your prices | Update or remove several lines at once |
 | Room templates | Create versions (once a project is won) |
 | Suppliers and their response rates | Record client requests |
-| Cost control for won projects | Create suppliers, draft requests for quote, record quotes |
+| Cost control for won projects | Create change orders (with lines), send, approve, reject |
+| | Create suppliers, draft requests for quote, record quotes |
 | Recent changes (activity log) | Purchase orders, supplier invoices, payments |
 | | **Undo** any change |
 
@@ -53,6 +55,9 @@ The assistant acts **as you**: it sees exactly what you see and can change exact
 > Finds the REV and PAV lines, lists them, and after your OK updates them in one change.
 
 > *"Which partidas in the catalogue still have no price?"*
+
+> *"On PRJ-0001, Ana wants a bathtub instead of the shower. Price it as a change order: take out the shower tray and add a 170 cm acrylic bathtub at 780 €."*
+> Creates draft CO with the lines and its total. Then *"Ana approved it today"* records the approval.
 
 > *"Undo that."*
 > Reverts the last change it made, as one step.

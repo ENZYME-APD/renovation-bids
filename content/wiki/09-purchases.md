@@ -1,6 +1,6 @@
 <!-- section: Working with the platform -->
 # Purchases and cost control
-> After the contract: purchase orders, supplier invoices, payments, and cost by chapter.
+> Construction phase: purchase orders, supplier invoices, payments, and cost by chapter against the current budget.
 
 Open a project and click **Purchases and cost control**.
 
@@ -33,7 +33,7 @@ A purchase order (numbered **PO-0001, PO-0002…** per studio) lists what you bu
 
 ## Cost by chapter
 
-For each chapter: **budget** (from the main version), **committed** (purchase orders not cancelled) and **remaining**. A negative remaining shows in red: that chapter is over budget before you've finished buying.
+For each chapter: **budget** (the signed contract plus approved change orders in that chapter; before a contract, the main version), **committed** (purchase orders not cancelled) and **remaining**. A negative remaining shows in red: that chapter is over budget before you've finished buying.
 
 **Example.** Tiling chapter (REV) budget 2 498 €. You order 18.5 m² at 82 € from the tile supplier (1 517 €) and 21 m² of fitting from the tiler at 45 € (945 €): committed 2 462 €, remaining 36 €.
 
@@ -43,7 +43,7 @@ For each chapter: **budget** (from the main version), **committed** (purchase or
 - **Payments out** to suppliers (labour, materials, extra), optionally against an invoice.
 - **Payments in** from the client: for the works or for your fees.
 
-The money summary at the top: budget, committed, invoiced, paid out, received from the client.
+The money summary at the top: **current budget** (contract + approved changes), committed, invoiced, paid out, received from the client.
 
 ## Closing the loop
 

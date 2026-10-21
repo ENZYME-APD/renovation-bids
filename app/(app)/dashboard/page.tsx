@@ -7,6 +7,7 @@ import { describe, groupChanges, sourceLabel, type ActivityRow } from "@/lib/act
 import { CountBars, EurPerM2Bars, MoneyBars } from "@/components/charts";
 
 const ACTION_LABEL: Record<string, string> = {
+  change_pending: "Change order",
   rfq_reminder: "Chase supplier", quote_review: "Review quote", unpriced_lines: "Price lines", offer_expiring: "Offer expiring",
   open_decision: "Client request", invoice_due: "Invoice due", delivery_late: "Late delivery",
 };
@@ -17,7 +18,7 @@ export default async function DashboardPage() {
   const studio = await requireStudio();
   const supabase = await createClient();
   const [stats, actions, money_, invoices, log] = await Promise.all([
-    supabase.from("project_stats").select("project_id, code, name, status, created_at, subtotal, budget_low, budget_high, eur_per_m2, contract_value, bid_hours, lines, priced_lines"),
+    supabase.from("project_stats").select("project_id, code, name, status, created_at, subtotal, budget_low, budget_high, eur_per_m2, contract_value, bid_hours, lines, priced_lines, phase"),
     supabase.from("action_items").select("*").order("priority").order("due_on", { nullsFirst: false }).limit(12),
     supabase.from("project_money").select("project_id, code, name, status, budget, committed, paid_out, received_works, received_fees, contract_value"),
     supabase.from("invoice_balances").select("outstanding, due_on"),
@@ -71,7 +72,7 @@ export default async function DashboardPage() {
 
       <section className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
         <Stat label="Bids in progress" value={String(open.length)} sub={money(open.reduce((t, p) => t + Number(p.subtotal ?? 0), 0), cur)} />
-        <Stat label="Won" value={String(won.length)} sub={money(won.reduce((t, p) => t + Number(p.contract_value ?? p.subtotal ?? 0), 0), cur)} />
+        <Stat label="Won" value={String(won.length)} sub={`${money(won.reduce((t, p) => t + Number(p.contract_value ?? p.subtotal ?? 0), 0), cur)} · ${projects.filter((p) => p.phase === "design").length} in design, ${projects.filter((p) => p.phase === "construction").length} on site`} />
         <Stat label="Win rate" value={winRate == null ? "—" : `${winRate}%`} sub={`${won.length} won · ${lost.length} lost`} />
         <Stat label="Average €/m²" value={avgM2 == null ? "—" : money(avgM2, cur)} sub={`${priced.length} priced projects`} />
         <Stat label="Unpaid invoices" value={money(outstanding, cur)} sub="supplier invoices outstanding" />
@@ -165,6 +166,8 @@ function actionHref(a: { kind: string | null; project_id: string | null; ref_id:
   switch (a.kind) {
     case "unpriced_lines":
       return a.ref_id ? `${project}/versions/${a.ref_id}?audit=1` : project;
+    case "change_pending":
+      return a.ref_id ? `${project}/changes/${a.ref_id}` : project;
     case "invoice_due":
     case "delivery_late":
       return `${project}/purchases`;

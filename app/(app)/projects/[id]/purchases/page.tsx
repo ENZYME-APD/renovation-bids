@@ -41,12 +41,15 @@ export default async function PurchasesPage({ params }: PageProps<"/projects/[id
         <h1 className="mt-3 text-2xl font-semibold tracking-tight">Purchases and cost control</h1>
         <PageIntro wiki="purchases">Order from budget lines, record supplier invoices and payments, and watch committed cost against the budget per chapter. Delivered costs can be saved back as prices.</PageIntro>
         {project.status !== "won" && (
-          <p className="mt-2 text-sm text-muted">This project isn’t won yet. Purchasing normally starts once the contract is signed.</p>
+          <p className="mt-2 text-sm text-muted">This project isn’t won yet. Purchasing normally starts once the contract is signed. Chapter budgets below include approved change orders.</p>
         )}
       </div>
 
       <section className="grid grid-cols-2 gap-3 md:grid-cols-5">
-        <Stat label={`Budget (${main?.label ?? "—"})`} value={money(m?.budget, cur)} />
+        <Stat
+          label={Number(m?.approved_changes ?? 0) !== 0 ? `Current budget (${main?.label ?? "—"} + changes)` : `Budget (${main?.label ?? "—"})`}
+          value={money(m?.current_budget ?? m?.budget, cur)}
+        />
         <Stat label="Committed" value={money(m?.committed, cur)} />
         <Stat label="Invoiced" value={money(m?.invoiced, cur)} />
         <Stat label="Paid out" value={money(m?.paid_out, cur)} />
