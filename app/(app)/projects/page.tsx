@@ -28,6 +28,9 @@ export default async function ProjectsPage({ searchParams }: PageProps<"/project
           <p className="eyebrow">{studio.name}</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight">Projects</h1>
           <PageIntro wiki="project-lifecycle">One project per job, through its whole life: bid, design, construction, closed. Until it is won, a bid has one standard version.</PageIntro>
+          {typeof sp.deleted === "string" && (
+            <p className="mt-2 text-sm text-ok">{sp.deleted} deleted. Changed your mind? Settings → Activity → Undo.</p>
+          )}
         </div>
         {studio.canWrite && <NewProjectButton initialOpen={openNew} />}
       </div>

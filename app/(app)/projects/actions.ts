@@ -72,3 +72,20 @@ export async function setProjectRoomHeight(formData: FormData) {
   if (error) throw new Error(error.message);
   revalidatePath(`/projects/${id}`);
 }
+
+/** Delete a project and everything in it (owners and admins). Undoable from Settings → Activity. */
+export async function deleteProject(_prev: string | null, formData: FormData): Promise<string | null> {
+  const studio = await requireWriter();
+  if (!studio.isAdmin) return "Only owners and admins can delete a project.";
+  const id = String(formData.get("id"));
+  const supabase = await createClient();
+  const { data: p } = await supabase.from("projects").select("code").eq("id", id).maybeSingle();
+  if (!p) return "Project not found.";
+  if (String(formData.get("confirm") ?? "").trim().toUpperCase() !== p.code.toUpperCase()) return `Type ${p.code} to confirm.`;
+  const { data, error } = await supabase.from("projects").delete().eq("id", id).select("id");
+  if (error) return error.message;
+  if (!data?.length) return "Not deleted: only owners and admins can delete a project.";
+  revalidatePath("/projects");
+  revalidatePath("/dashboard");
+  redirect("/projects?deleted=" + encodeURIComponent(p.code));
+}
