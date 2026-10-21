@@ -44,3 +44,24 @@ body {
     @apply text-xs font-semibold uppercase tracking-wider text-accent;
   }
 }
+
+/* Wiki articles */
+@layer components {
+  .wiki { @apply max-w-3xl text-[0.95rem] leading-relaxed; }
+  .wiki h2 { @apply mt-10 mb-3 scroll-mt-20 text-xl font-semibold tracking-tight; }
+  .wiki h3 { @apply mt-7 mb-2 scroll-mt-20 text-base font-semibold; }
+  .wiki p { @apply my-3; }
+  .wiki ul { @apply my-3 list-disc space-y-1 pl-6; }
+  .wiki ol { @apply my-3 list-decimal space-y-1 pl-6; }
+  .wiki a { @apply text-accent underline underline-offset-2; }
+  .wiki strong { @apply font-semibold; }
+  .wiki blockquote { @apply my-4 rounded-r-md border-l-4 border-accent bg-accent-soft px-4 py-2 text-ink; }
+  .wiki code { @apply rounded bg-paper px-1 py-0.5 font-mono text-[0.85em]; }
+  .wiki pre { @apply my-4 overflow-x-auto rounded-lg border border-line bg-paper p-4 text-sm; }
+  .wiki pre code { @apply bg-transparent p-0; }
+  .wiki table { @apply w-full text-sm; }
+  .wiki th { @apply border-b border-line bg-paper px-3 py-2 text-left font-medium text-muted; }
+  .wiki td { @apply border-b border-line px-3 py-2 align-top; }
+  .wiki tr:last-child td { @apply border-b-0; }
+  .wiki hr { @apply my-8 border-line; }
+}

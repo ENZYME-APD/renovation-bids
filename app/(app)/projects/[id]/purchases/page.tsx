@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageIntro } from "@/components/page-intro";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/dal";
@@ -38,6 +39,7 @@ export default async function PurchasesPage({ params }: PageProps<"/projects/[id
       <div>
         <Link href={`/projects/${id}`} className="text-sm text-muted hover:text-ink">← {project.code} {project.name}</Link>
         <h1 className="mt-3 text-2xl font-semibold tracking-tight">Purchases and cost control</h1>
+        <PageIntro wiki="purchases">Order from budget lines, record supplier invoices and payments, and watch committed cost against the budget per chapter. Delivered costs can be saved back as prices.</PageIntro>
         {project.status !== "won" && (
           <p className="mt-2 text-sm text-muted">This project isn’t won yet. Purchasing normally starts once the contract is signed.</p>
         )}

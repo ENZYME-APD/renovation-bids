@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageIntro } from "@/components/page-intro";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/dal";
@@ -124,6 +125,7 @@ export default async function VersionPage({ params, searchParams }: PageProps<"/
           <div>
             <p className="eyebrow">Version {version.label}</p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight">{version.description || "Budget"}</h1>
+            <PageIntro wiki="budgets">Add rooms from templates and single lines, check the gaps with Incomplete only, and read it by chapter or by room. The range comes from each price&apos;s confidence.</PageIntro>
           </div>
           <form action={updateVersionStatus} className="flex items-end gap-2">
             {hidden}

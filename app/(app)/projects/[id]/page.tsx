@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageIntro } from "@/components/page-intro";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/dal";
@@ -58,6 +59,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
           <div>
             <p className="font-mono text-xs text-muted">{project.code}</p>
             <h1 className="text-2xl font-semibold tracking-tight">{project.name}</h1>
+            <PageIntro wiki="bid-workflow">Move the status along as the bid progresses. Open the version to scope and price it; after the project is won, add versions for options and use Purchases.</PageIntro>
             <Link href={`/projects/${project.id}/purchases`} className="mt-1 inline-block text-sm text-muted hover:text-ink">
               Purchases and cost control →
             </Link>

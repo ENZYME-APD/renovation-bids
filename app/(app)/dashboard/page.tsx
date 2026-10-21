@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageIntro } from "@/components/page-intro";
 import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/dal";
 import { dateShort, dateTime, humanize, money } from "@/lib/format";
@@ -63,6 +64,7 @@ export default async function DashboardPage() {
         <div>
           <p className="eyebrow">{studio.name}</p>
           <h1 className="text-2xl font-semibold">Dashboard</h1>
+          <PageIntro wiki="dashboard">What needs doing today and how the pipeline is going. Click an action item to go straight to the work.</PageIntro>
         </div>
         {studio.canWrite && <Link href="/projects?new=1" className="btn">+ New project</Link>}
       </header>
