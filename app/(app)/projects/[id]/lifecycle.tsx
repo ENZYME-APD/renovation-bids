@@ -20,12 +20,51 @@ function useDone(pending: boolean, state: State, onDone: () => void) {
   }, [pending, state, onDone]);
 }
 
-export function PhaseStepper({ projectId, phase, canWrite }: { projectId: string; phase: string; canWrite: boolean }) {
+export function PhaseStepper({ projectId, phase, canWrite, vertical }: { projectId: string; phase: string; canWrite: boolean; vertical?: boolean }) {
   const [state, action, pending] = useActionState(setPhase.bind(null, projectId), null);
   const idx = PHASES.findIndex((p) => p.key === phase);
+  if (vertical) {
+    return (
+      <div>
+        <ol className="relative space-y-0.5" aria-label="Project phase">
+          {PHASES.map((p, i) => {
+            const current = i === idx;
+            const done = i < idx;
+            return (
+              <li key={p.key} className="relative">
+                {i < PHASES.length - 1 && (
+                  <span aria-hidden className={`absolute left-[0.6875rem] top-6 h-[calc(100%-0.75rem)] w-px ${done ? "bg-accent" : "bg-line"}`} />
+                )}
+                <form action={action}>
+                  <input type="hidden" name="phase" value={p.key} />
+                  <button
+                    disabled={!canWrite || current || pending}
+                    title={canWrite && !current ? `Move to ${p.label}` : p.hint}
+                    aria-current={current ? "step" : undefined}
+                    className="group flex w-full items-start gap-3 rounded-md py-1 text-left disabled:cursor-default"
+                  >
+                    <span className={`relative z-10 mt-0.5 grid size-[1.375rem] shrink-0 place-items-center rounded-full border text-[0.7rem] ${
+                      current ? "border-accent bg-accent text-accent-ink" : done ? "border-accent bg-surface text-accent" : "border-line bg-surface text-muted group-enabled:group-hover:border-ink"
+                    }`}>
+                      {done ? "✓" : i + 1}
+                    </span>
+                    <span className="min-w-0">
+                      <span className={`block text-sm ${current ? "font-semibold text-ink" : done ? "text-ink" : "text-muted group-enabled:group-hover:text-ink"}`}>{p.label}</span>
+                      {current && <span className="block text-xs text-muted">{p.hint}</span>}
+                    </span>
+                  </button>
+                </form>
+              </li>
+            );
+          })}
+        </ol>
+        {state?.error && <p className="mt-1 text-xs text-accent">{state.error}</p>}
+      </div>
+    );
+  }
   return (
     <div>
-      <ol className="flex flex-wrap items-stretch gap-1 text-sm" aria-label="Project phase">
+      <ol className="flex flex-wrap items-center gap-1 text-sm" aria-label="Project phase">
         {PHASES.map((p, i) => {
           const current = i === idx;
           const done = i < idx;
@@ -36,7 +75,7 @@ export function PhaseStepper({ projectId, phase, canWrite }: { projectId: string
                 <button
                   disabled={!canWrite || current || pending}
                   title={p.hint}
-                  className={`rounded-full border px-3 py-1 ${current ? "border-accent bg-accent text-accent-ink" : done ? "border-accent/40 text-ink" : "border-line text-muted hover:text-ink"} disabled:cursor-default`}
+                  className={`rounded-full border px-2.5 py-0.5 ${current ? "border-accent bg-accent text-accent-ink" : done ? "border-accent/40 text-ink" : "border-line text-muted hover:text-ink"} disabled:cursor-default`}
                 >
                   {done ? "✓ " : ""}{p.label}
                 </button>
