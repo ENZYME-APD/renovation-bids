@@ -85,7 +85,7 @@ export default async function DashboardPage() {
                 <li key={`${a.kind}-${a.ref_id}-${i}`} className="flex items-center justify-between gap-4 py-2 text-sm">
                   <div className="min-w-0">
                     <span className="mr-2 rounded-full border border-line px-2 py-0.5 text-xs text-muted">{ACTION_LABEL[a.kind ?? ""] ?? humanize(a.kind ?? "")}</span>
-                    <Link href={`/projects/${a.project_id}`} className="hover:underline">{a.title}</Link>
+                    <Link href={actionHref(a)} className="hover:underline">{a.title}</Link>
                     <span className="ml-2 text-muted">{a.project_code}</span>
                   </div>
                   {a.due_on && <span className={`shrink-0 text-xs ${new Date(a.due_on) < new Date() ? "text-accent" : "text-muted"}`}>{dateShort(a.due_on)}</span>}
@@ -156,3 +156,17 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
 }
 
 const Empty = ({ text = "Nothing yet." }: { text?: string }) => <p className="text-sm text-muted">{text}</p>;
+
+/** Where an action item's work happens. */
+function actionHref(a: { kind: string | null; project_id: string | null; ref_id: string | null }) {
+  const project = `/projects/${a.project_id}`;
+  switch (a.kind) {
+    case "unpriced_lines":
+      return a.ref_id ? `${project}/versions/${a.ref_id}?audit=1` : project;
+    case "invoice_due":
+    case "delivery_late":
+      return `${project}/purchases`;
+    default:
+      return project;
+  }
+}

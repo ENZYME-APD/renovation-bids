@@ -20,10 +20,13 @@ export type Chapter = { id: string; code: string | null; name: string };
 const UNITS = ["m2", "m", "m3", "ud", "kg", "h", "pa"];
 const KIND: Record<Item["kind"], string> = { standard: "Standard", custom: "Customised", own: "Studio" };
 
-export function CatalogueTable({ items, chapters, currency, canWrite }: { items: Item[]; chapters: Chapter[]; currency: string; canWrite: boolean }) {
+export function CatalogueTable({ items, chapters, currency, canWrite, spread }: { items: Item[]; chapters: Chapter[]; currency: string; canWrite: boolean; spread: Record<string, number> }) {
   const [q, setQ] = useState("");
   const [chapter, setChapter] = useState("");
   const [showHidden, setShowHidden] = useState(false);
+  const [unpricedOnly, setUnpricedOnly] = useState(false);
+  const hiddenCount = items.filter((i) => i.hidden).length;
+  const unpricedCount = items.filter((i) => !i.hidden && !i.price).length;
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [modal, setModal] = useState<{ type: "price" | "edit" | "new"; item?: Item } | null>(null);
   const fmt = useMemo(() => new Intl.NumberFormat("es-ES", { style: "currency", currency, minimumFractionDigits: 2 }), [currency]);
@@ -38,11 +41,12 @@ export function CatalogueTable({ items, chapters, currency, canWrite }: { items:
           (i) =>
             i.tradeId === c.id &&
             (showHidden || !i.hidden) &&
+            (!unpricedOnly || !i.price) &&
             (!needle || i.code.toLowerCase().includes(needle) || i.description.toLowerCase().includes(needle)),
         ),
       }))
       .filter((g) => g.items.length);
-  }, [items, chapters, q, chapter, showHidden]);
+  }, [items, chapters, q, chapter, showHidden, unpricedOnly]);
 
   const total = groups.reduce((t, g) => t + g.items.length, 0);
   const allCollapsed = groups.length > 0 && groups.every((g) => collapsed.has(g.chapter.id));
@@ -63,12 +67,20 @@ export function CatalogueTable({ items, chapters, currency, canWrite }: { items:
           <option value="">All chapters</option>
           {chapters.map((c) => <option key={c.id} value={c.id}>{c.code ? `${c.code} · ${c.name}` : c.name}</option>)}
         </select>
-        <label className="flex items-center gap-2 text-sm text-muted">
-          <input type="checkbox" className="size-4 accent-[var(--accent)]" checked={showHidden} onChange={(e) => setShowHidden(e.target.checked)} />
-          Show hidden
+        <label className="flex items-center gap-2 text-sm text-muted" title="Standard partidas your studio has hidden, and your own partidas you have hidden">
+          <input type="checkbox" className="size-4 accent-[var(--accent)]" checked={showHidden} onChange={(e) => setShowHidden(e.target.checked)} disabled={!hiddenCount} />
+          Show hidden ({hiddenCount})
         </label>
         <span className="text-sm text-muted">{total} partidas</span>
-        <button type="button" className="ml-auto text-sm text-muted hover:text-ink" onClick={() => setCollapsed(allCollapsed ? new Set() : new Set(groups.map((g) => g.chapter.id)))}>
+        <button
+          type="button"
+          onClick={() => setUnpricedOnly((v) => !v)}
+          aria-pressed={unpricedOnly}
+          className={`ml-auto text-sm ${unpricedOnly ? "font-medium text-accent" : "text-muted hover:text-ink"}`}
+        >
+          {unpricedOnly ? `Showing ${unpricedCount} without a price · Show all` : `Unpriced only (${unpricedCount})`}
+        </button>
+        <button type="button" className="text-sm text-muted hover:text-ink" onClick={() => setCollapsed(allCollapsed ? new Set() : new Set(groups.map((g) => g.chapter.id)))}>
           {allCollapsed ? "Expand all" : "Collapse all"}
         </button>
         <ExportMenu href="/catalogue/export" />
@@ -116,6 +128,9 @@ export function CatalogueTable({ items, chapters, currency, canWrite }: { items:
                         {i.price ? (
                           <>
                             <div className="font-medium tabular-nums">{fmt.format(i.price.unitPrice)}</div>
+                            <div className="whitespace-nowrap text-xs tabular-nums text-muted" title={`Budgets show ±${Math.round((spread[i.price.confidence] ?? 0.25) * 100)}% for ${i.price.confidence} confidence`}>
+                              {fmt.format(i.price.unitPrice * (1 - (spread[i.price.confidence] ?? 0.25)))} – {fmt.format(i.price.unitPrice * (1 + (spread[i.price.confidence] ?? 0.25)))}
+                            </div>
                             <div className="whitespace-nowrap text-xs text-muted">{humanize(i.price.source)} · {humanize(i.price.confidence)} · {i.price.pricedOn}</div>
                           </>
                         ) : (

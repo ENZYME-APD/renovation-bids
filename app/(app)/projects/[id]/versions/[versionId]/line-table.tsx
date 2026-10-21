@@ -36,13 +36,13 @@ function issuesOf(l: Line, usesRooms: boolean): string[] {
 }
 
 export function LineTable({
-  projectId, versionId, groups, groupBy, rooms, canWrite,
-}: { projectId: string; versionId: string; groups: Group[]; groupBy: "chapter" | "room"; rooms: string[]; canWrite: boolean }) {
+  projectId, versionId, groups, groupBy, rooms, canWrite, initialAudit = false,
+}: { projectId: string; versionId: string; groups: Group[]; groupBy: "chapter" | "room"; rooms: string[]; canWrite: boolean; initialAudit?: boolean }) {
   const allIds = useMemo(() => groups.flatMap((g) => g.lines.map((l) => l.id)), [groups]);
   const [picked, setSelected] = useState<Set<string>>(new Set());
   const [result, setResult] = useState<BatchState>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  const [auditOnly, setAuditOnly] = useState(false);
+  const [auditOnly, setAuditOnly] = useState(initialAudit);
   const usesRooms = useMemo(() => groups.some((g) => g.lines.some((l) => l.room)), [groups]);
   const issueCount = useMemo(() => groups.reduce((t, g) => t + g.lines.filter((l) => issuesOf(l, usesRooms).length).length, 0), [groups, usesRooms]);
   const shown = useMemo(

@@ -11,7 +11,9 @@ import { LineTable, type Group, type Line } from "./line-table";
 
 export default async function VersionPage({ params, searchParams }: PageProps<"/projects/[id]/versions/[versionId]">) {
   const { id: projectId, versionId } = await params;
-  const groupBy = (await searchParams).group === "room" ? "room" : "chapter";
+  const sp = await searchParams;
+  const groupBy = sp.group === "room" ? "room" : "chapter";
+  const audit = sp.audit === "1";
   const studio = await requireStudio();
   const supabase = await createClient();
 
@@ -104,7 +106,7 @@ export default async function VersionPage({ params, searchParams }: PageProps<"/
   );
   const tab = (g: "chapter" | "room", label: string) => (
     <Link
-      href={`?group=${g}`}
+      href={`?group=${g}${audit ? "&audit=1" : ""}`}
       scroll={false}
       className={`rounded px-3 py-1 ${groupBy === g ? "bg-surface text-ink shadow-sm" : "text-muted hover:text-ink"}`}
     >
@@ -200,7 +202,7 @@ export default async function VersionPage({ params, searchParams }: PageProps<"/
           )}
         </div>
         {lines.length === 0 && <p className="text-sm text-muted">No lines yet. Add a room to fill in its standard items, or add partidas one by one.</p>}
-        <LineTable projectId={projectId} versionId={versionId} groups={lineGroups} groupBy={groupBy} rooms={rooms} canWrite={studio.canWrite} />
+        <LineTable projectId={projectId} versionId={versionId} groups={lineGroups} groupBy={groupBy} rooms={rooms} canWrite={studio.canWrite} initialAudit={audit} />
       </section>
     </div>
   );
