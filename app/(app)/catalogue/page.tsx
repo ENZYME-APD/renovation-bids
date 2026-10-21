@@ -62,7 +62,7 @@ export default async function CataloguePage() {
         <p className="eyebrow">{studio.name}</p>
         <h1 className="text-2xl font-semibold">Catalogue</h1>
         <p className="mt-1 max-w-2xl text-sm text-muted">
-          The partidas you price with, by chapter. Standard partidas are shared; customise one to make your studio&apos;s own version of
+          The partidas you price with, by chapter. Standard partidas are shared; editing one makes your studio&apos;s own version of
           that code, which then replaces it in budgets and room templates. Hide the standard ones you never use. Prices keep their history;
           the newest, most reliable one is used, and its confidence sets the low–high range budgets show.
         </p>
