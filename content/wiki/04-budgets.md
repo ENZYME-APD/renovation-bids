@@ -103,9 +103,22 @@ The dashboard's *"N lines without a price"* opens the budget straight in this vi
 - tick *Delete lines not in the file* to make the version match the file exactly;
 - the import shows a preview first (lines, new codes, totals per chapter) and applies all or nothing, as one change you can undo.
 
-Import also reads a studio **PRESUPUESTO / MEDICIONES** workbook (Código, Título, Descripción, Cant., Precio, Imp. Constructora, Imp. Propiedad, Notas, Medición), including quantities that are formulas pointing at the measurements sheet. Its chapters are mapped to catalogue chapters, room sub-chapters (Dormitorio, Baño…) become rooms, *LO COMPRA LA PROPIEDAD* becomes *client buys it*, and the preview compares each of its chapter totals with what will be imported.
+Import also reads a studio **PRESUPUESTO / MEDICIONES** workbook (Código, Título, Descripción, Cant., Precio, Imp. Constructora, Imp. Propiedad, Notas, Medición), including quantities that are formulas pointing at the measurements sheet. Its chapters are mapped to the catalogue chapters, room sub-chapters (Dormitorio, Baño…) become rooms, and *LO COMPRA LA PROPIEDAD* becomes *client buys it*.
 
-**Example:** Santa Hortensia 45 (P26021), 132 lines from his workbook, imports at exactly **97,064.58 €**, the total of the PDF sent to the client.
+### Codes from another system: matched, not copied
+
+The catalogue is the standard. Codes that are not in it (AT1, DTL, OTRO2…) are **matched** to catalogue partidas by their words, unit and chapter, and the import shows a review:
+
+| Tab | What's in it |
+|---|---|
+| **To check** | Lines without a clear match: the best suggestion is preselected, or *New partida* when nothing fits. A red border warns when the units differ |
+| **Matched automatically** | Clear matches (same unit, clearly better than the next option). Worth a glance |
+
+For each line you can keep the suggestion, pick any catalogue partida, or confirm a **new studio partida**: it gets the next standard code in its chapter (CLI-050, ELE-140…), never the file's code. The same new item in several rooms becomes one partida. The line keeps the file's quantity, price, description and measurements, and the file's code as a reference.
+
+**Catalogue → To standardise** lists studio partidas outside the scheme (codes like AT1, no description, a code from another chapter) so they can be cleaned up.
+
+**Example:** Santa Hortensia 45 (P26021), 132 lines: about 80 match automatically, about 50 are checked in one pass, roughly 15 become new studio partidas, and the budget still totals exactly **97,064.58 €**, the figure in the PDF sent to the client.
 
 ## Exporting only
 

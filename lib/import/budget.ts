@@ -313,7 +313,7 @@ export function unitCode(u: unknown): string | null {
 function unitFrom(sheetUnit: string | null | undefined, desc: string | null, title: string) {
   const u = unitCode(sheetUnit);
   if (u) return u;
-  const t = `${desc ?? ""} ${title}`.toLowerCase();
+  const t = `${desc ?? ""} ${title}`.toLowerCase().replace(/\s+/g, " ");
   if (/medici[óo]n por m²|por m2|por metro cuadrado/.test(t)) return "m2";
   if (/por metro lineal|por ml|medici[óo]n por metro\b/.test(t)) return "m";
   if (/tanto alzado|\(total\)|partida alzada/.test(t)) return "pa";
