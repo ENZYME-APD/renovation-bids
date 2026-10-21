@@ -2,6 +2,7 @@
 
 import { Modal } from "@/components/modal";
 import { EditRoomForm, roomSummary, type RoomInfo } from "./add-room-form";
+import { LineDetailsForm } from "./line-details";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { humanize, money2 } from "@/lib/format";
 import { Constants } from "@/lib/database.types";
@@ -26,6 +27,14 @@ export type Line = {
   source: string;
   overridden: boolean;
   roomId?: string | null;
+  supplied: string;
+  jobDescription: string | null;
+  longDescription: string | null;
+  clientNote: string | null;
+  measurementNote: string | null;
+  referencePrice: number | null;
+  referenceSource: string | null;
+  measurements: { label: string | null; count: number | null; length: number | null; width: number | null; height: number | null; partial: number }[];
 };
 
 const SOURCE: Record<string, string> = {
@@ -52,6 +61,7 @@ export function LineTable({
   const [result, setResult] = useState<BatchState>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [editingRoom, setEditingRoom] = useState<RoomInfo | null>(null);
+  const [detailLine, setDetailLine] = useState<Line | null>(null);
   const [auditOnly, setAuditOnly] = useState(initialAudit);
   const usesRooms = useMemo(() => groups.some((g) => g.lines.some((l) => l.room)), [groups]);
   const issueCount = useMemo(() => groups.reduce((t, g) => t + g.lines.filter((l) => issuesOf(l, usesRooms).length).length, 0), [groups, usesRooms]);
@@ -131,7 +141,7 @@ export function LineTable({
       {shown.map((g) => {
         const gIds = g.lines.map((l) => l.id);
         const nSel = gIds.filter((id) => selected.has(id)).length;
-        const subtotal = g.lines.reduce((t, l) => t + Number(l.total ?? 0), 0);
+        const subtotal = g.lines.reduce((t, l) => t + (l.supplied === "client" ? 0 : Number(l.total ?? 0)), 0);
         const open = !collapsed.has(g.key);
         return (
           <div key={g.key} className="card overflow-x-auto">
@@ -198,7 +208,15 @@ export function LineTable({
                             {SOURCE[l.source] ?? l.source}{l.overridden ? " · edited" : ""}
                           </span>
                         )}
+                        {l.supplied === "client" && <span className="ml-2 rounded bg-paper px-1.5 py-0.5 text-[0.65rem] text-muted" title="Not in the contract total">client buys</span>}
                         <div className="text-[0.95rem] font-medium leading-snug">{l.description}</div>
+                        {l.clientNote && <div className="text-xs text-accent">{l.clientNote}</div>}
+                        {l.referencePrice != null && l.unitPrice != null && (
+                          <div className="text-xs text-muted" title={l.referenceSource ?? undefined}>
+                            Reference {money2(l.referencePrice)}{l.referenceSource ? ` (${l.referenceSource})` : ""} · ours {l.unitPrice >= l.referencePrice ? "+" : "−"}
+                            {Math.abs(l.referencePrice ? ((l.unitPrice - l.referencePrice) / l.referencePrice) * 100 : 0).toFixed(0)} %
+                          </div>
+                        )}
                         {context && <div className="text-xs text-muted">{context}</div>}
                         {auditOnly && (
                           <div className="mt-1 flex flex-wrap gap-1">
@@ -210,7 +228,14 @@ export function LineTable({
                       </td>
                       <td className="px-2 py-2">
                         <div className="flex items-center gap-1">
-                          <input form={fid} name="quantity" defaultValue={l.quantity} inputMode="decimal" className="input px-2 py-1" disabled={!canWrite} />
+                          {l.measurements.length ? (
+                            <>
+                              <input form={fid} type="hidden" name="quantity" value={l.quantity} />
+                              <button type="button" onClick={() => canWrite && setDetailLine(l)} className="w-full rounded border border-dashed border-line px-2 py-1 text-left tabular-nums" title={`${l.measurements.length} measurement lines`}>{l.quantity}</button>
+                            </>
+                          ) : (
+                            <input form={fid} name="quantity" defaultValue={l.quantity} inputMode="decimal" className="input px-2 py-1" disabled={!canWrite} />
+                          )}
                           <span className="text-xs text-muted">{l.unit}</span>
                         </div>
                       </td>
@@ -238,6 +263,7 @@ export function LineTable({
                               <input type="hidden" name="orig_price" value={l.unitPrice ?? ""} />
                               <button className="btn-quiet">Save</button>
                             </form>
+                            <button type="button" className="btn-quiet" onClick={() => setDetailLine(l)}>Details</button>
                             <form action={deleteLine}>
                               {hidden}
                               <input type="hidden" name="id" value={l.id} />
@@ -269,6 +295,9 @@ export function LineTable({
           onUndo={(changeId) => run(() => undoBatch(projectId, versionId, changeId))}
         />
       )}
+      <Modal open={!!detailLine} onClose={() => setDetailLine(null)} title={detailLine ? `${detailLine.code} · ${detailLine.description}` : "Line"} wide>
+        {detailLine && <LineDetailsForm projectId={projectId} versionId={versionId} line={detailLine} onDone={() => setDetailLine(null)} />}
+      </Modal>
       <Modal open={!!editingRoom} onClose={() => setEditingRoom(null)} title={editingRoom ? `Room · ${editingRoom.name}` : "Room"}>
         {editingRoom && <EditRoomForm projectId={projectId} versionId={versionId} room={editingRoom} onDone={() => setEditingRoom(null)} />}
       </Modal>

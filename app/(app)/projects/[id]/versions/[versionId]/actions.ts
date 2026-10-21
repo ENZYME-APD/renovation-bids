@@ -247,3 +247,47 @@ export async function undoBatch(projectId: string, versionId: string, changeId: 
   revalidatePath(pathFor(projectId, versionId));
   return { ok: "Undone." };
 }
+
+// ── Line details: offer texts, who supplies it, reference price, measurement lines ─────────────
+export async function saveLineDetails(projectId: string, versionId: string, _prev: string | null, formData: FormData): Promise<string | null> {
+  await requireWriter();
+  const supabase = await createClient();
+  const s = (k: string) => String(formData.get(k) ?? "").trim() || null;
+  const id = String(formData.get("id"));
+  const ref = toNumber(formData.get("reference_price"));
+  const { error } = await supabase
+    .from("line_items")
+    .update({
+      supplied_by: formData.get("supplied_by") === "client" ? "client" : "contractor",
+      description: s("description"),
+      client_note: s("client_note"),
+      measurement_note: s("measurement_note"),
+      notes: s("notes"),
+      reference_price: ref,
+      reference_source: ref == null ? null : s("reference_source"),
+    })
+    .eq("id", id);
+  if (error) return error.message;
+
+  // Measurement lines: replace them all when the editor sent them
+  const raw = formData.get("measurements");
+  if (typeof raw === "string") {
+    const rows = (JSON.parse(raw) as { label: string; count: string; length: string; width: string; height: string }[])
+      .map((m, i) => ({
+        label: m.label.trim() || null,
+        count: toNumber(m.count), length: toNumber(m.length), width: toNumber(m.width), height: toNumber(m.height), sequence: i + 1,
+      }))
+      .filter((m) => m.count != null || m.length != null || m.width != null || m.height != null);
+    const { data: line } = await supabase.from("line_items").select("organization_id").eq("id", id).single();
+    const { error: delError } = await supabase.from("line_measurements").delete().eq("line_id", id);
+    if (delError) return delError.message;
+    if (rows.length && line) {
+      const { error: insError } = await supabase
+        .from("line_measurements")
+        .insert(rows.map((m) => ({ ...m, line_id: id, organization_id: line.organization_id })));
+      if (insError) return insError.message;
+    }
+  }
+  revalidatePath(pathFor(projectId, versionId));
+  return null;
+}

@@ -35,7 +35,11 @@ export function ExportMenu({ href, label = "Export" }: { href: string; label?: s
             CSV
             <span className="block text-xs text-muted">Plain data for other tools.</span>
           </a>
-          <p className="px-3 py-2 text-xs text-muted">Google Sheets: in Drive, upload the Excel file and open it with Google Sheets.</p>
+          <a role="menuitem" className="block rounded px-3 py-2 hover:bg-paper" href={`${href}${sep}format=json`} download onClick={() => setOpen(false)}>
+            JSON
+            <span className="block text-xs text-muted">For scripts and other software.</span>
+          </a>
+          <p className="px-3 py-2 text-xs text-muted">Edit the file and bring it back with Import. Google Sheets: in Drive, upload the Excel file and open it with Google Sheets.</p>
         </div>
       )}
     </div>

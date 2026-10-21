@@ -80,3 +80,11 @@ New budget lines take the price in use at that moment. Existing lines keep their
 
 - **Unpriced only (n)** lists partidas with no price. Price them before they show up in a bid.
 - **Export → Excel** gives the whole catalogue with current prices, to review offline or share with a contractor.
+
+## Import and export
+
+**Export** the catalogue (Excel, CSV or JSON), edit it, and **Import** it back, matched by code:
+
+- an edited standard partida becomes your studio's version (the standard stays as it was);
+- a new code becomes a studio partida (needs a Chapter code, a Description and a Unit);
+- a changed **Unit price** is saved as a new price, so the history is kept; an unchanged price is not repeated.

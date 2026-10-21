@@ -80,6 +80,33 @@ Every batch is **one change**: the bar offers **Undo** straight away, and *Setti
 
 The dashboard's *"N lines without a price"* opens the budget straight in this view.
 
-## Exporting
+## Line details
+
+**Details** on a line opens what doesn't fit in the row:
+
+| Field | Printed in the offer | Use |
+|---|---|---|
+| **Supplied by** | ✓ | *Contractor* lines make the works contract. *Client buys it* lines (kitchen units, appliances) are listed apart and never added to the contract total |
+| **Description in the offer** | ✓ | Job-specific text. Empty = the catalogue's description |
+| **Note for the client** | ✓ | "Medición a confirmar en obra", "Precio a confirmar por instalador" |
+| **How it was measured** | ✓ | "13,44 ml × 2,50 m" |
+| **Internal note** | ✗ | For the team only |
+| **Reference price** | ✗ | A price the client found elsewhere (another contractor, a web price). The row shows how far yours is from it |
+| **Measurement lines** | ✓ (measurements sheet) | Nº × length × width × height per place. With measurement lines, the quantity is their sum; a negative Nº deducts (a door opening) |
+
+## Import and export: a round trip
+
+**Export** gives Excel, CSV or JSON. The Excel has a **Lines** sheet (with an ID per line), a **Measurements** sheet and the chapter summary. Edit it anywhere (Excel, Google Sheets, a script) and bring it back with **Import**:
+
+- rows with an ID update that line (only the columns present);
+- rows without an ID add lines; a code not in the catalogue becomes a studio partida (give it Title, Unit and a Chapter code);
+- tick *Delete lines not in the file* to make the version match the file exactly;
+- the import shows a preview first (lines, new codes, totals per chapter) and applies all or nothing, as one change you can undo.
+
+Import also reads a studio **PRESUPUESTO / MEDICIONES** workbook (Código, Título, Descripción, Cant., Precio, Imp. Constructora, Imp. Propiedad, Notas, Medición), including quantities that are formulas pointing at the measurements sheet. Its chapters are mapped to catalogue chapters, room sub-chapters (Dormitorio, Baño…) become rooms, *LO COMPRA LA PROPIEDAD* becomes *client buys it*, and the preview compares each of its chapter totals with what will be imported.
+
+**Example:** Santa Hortensia 45 (P26021), 132 lines from his workbook, imports at exactly **97,064.58 €**, the total of the PDF sent to the client.
+
+## Exporting only
 
 **Export → Excel** gives two sheets: every line (chapter, code, description, room, unit, quantity, price, total, confidence, state) and the chapter summary with low and high. **CSV** gives the lines as plain data. To use Google Sheets, upload the Excel file to Drive and open it there.

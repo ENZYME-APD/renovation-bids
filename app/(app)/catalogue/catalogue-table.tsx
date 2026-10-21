@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { Modal } from "@/components/modal";
 import { ExportMenu } from "@/components/export-menu";
+import { CatalogueImport } from "./catalogue-import";
 import { humanize, unitLabel } from "@/lib/format";
 import { deletePartida, deletePrice, hideStandard, savePartida, setActive, setPrice, type State } from "./actions";
 
@@ -69,6 +70,7 @@ export function CatalogueTable({ items, chapters, currency, canWrite, spread }: 
             {chapters.map((c) => <option key={c.id} value={c.id}>{c.code ? `${c.code} · ${c.name}` : c.name}</option>)}
           </select>
           <div className="ml-auto flex items-center gap-2">
+            {canWrite && <CatalogueImport />}
             <ExportMenu href="/catalogue/export" />
             {canWrite && <button className="btn" onClick={() => setModal({ type: "new" })}>+ New partida</button>}
           </div>
