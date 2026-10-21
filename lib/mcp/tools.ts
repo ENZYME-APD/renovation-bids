@@ -73,6 +73,8 @@ const schema = (properties: Json, required: string[] = []) => ({ type: "object",
 
 const PROJECT_STATUS: Enums["project_status"][] = ["lead", "qualifying", "no_go", "site_visit", "design", "pricing", "offer_sent", "won", "lost", "on_hold"];
 const LINE_STATE: Enums["line_state"][] = ["unpriced", "priced", "needs_rfq", "quoted"];
+const LINE_SOURCE: Enums["line_source"][] = ["manual", "template", "model_zone", "model_element", "ai_assumption", "import"];
+const SOURCE_HELP = "Where the quantities come from: manual, template, model_zone (a zone/room from Archicad or other BIM), model_element, ai_assumption (your own estimate from photos, a scan or a description), import (a drawing, schedule or spreadsheet)";
 const UNITS: Enums["unit"][] = ["m2", "m", "m3", "ud", "kg", "h", "pa"];
 const CATEGORY_OUT = ["labour", "materials", "extra"] as const;
 const CATEGORY_IN = ["client_works", "client_fees"] as const;
@@ -231,7 +233,7 @@ const READ: ToolDef[] = [
     run: async (a, ctx) => {
       const v = await version(ctx.db, a);
       const [lines, chapters] = await Promise.all([
-        ctx.db.from("line_items").select("id, quantity, unit_price, total, state, confidence, notes, room, partidas(code, short_description, unit, trades(code, name))").eq("version_id", v.id).order("created_at"),
+        ctx.db.from("line_items").select("id, quantity, unit_price, total, state, confidence, notes, room, source, source_ref, overridden, partidas(code, short_description, unit, trades(code, name))").eq("version_id", v.id).order("created_at"),
         ctx.db.rpc("version_budget", { p_version: v.id }),
       ]);
       const ch = check(chapters);
@@ -273,10 +275,10 @@ const READ: ToolDef[] = [
   {
     name: "list_room_templates",
     title: "List room templates",
-    description: "Room templates (kitchen, bathroom, bedroom…) that add a standard set of lines scaled to the room size. Use with add_room.",
+    description: "The studio's room templates (kitchen, bathroom, bedroom…): each adds a standard set of lines scaled to the room size. match_terms are the room names / zone categories that map to it. Use with add_room.",
     inputSchema: schema({}),
     run: async (_a, ctx) =>
-      check(await ctx.db.from("room_templates").select("id, code, name, size_label, description, room_template_lines(count)").eq("region_id", ctx.studio.regionId).eq("active", true).order("sequence")),
+      check(await ctx.db.rpc("effective_room_templates", { p_org: ctx.studio.id }).select("id, code, name, size_label, description, match_terms, room_template_lines(count)").eq("active", true).order("sequence")),
   },
   {
     name: "list_action_items",
@@ -483,18 +485,24 @@ const WRITE: ToolDef[] = [
   {
     name: "create_version",
     title: "Create a version",
-    description: "Add a version (option) to a project, optionally copying the lines of another version. The studio only allows one version until the project is won.",
+    description: "Add a version (option) to a project, optionally copying the lines of another version. Unless the studio allows options in the bid, only one version until the project is won. model_tool/model_option record where the option lives (e.g. an Archicad design option).",
     writes: true,
-    inputSchema: schema({ project: P("Project code, id or name"), label: P("Label, e.g. B"), description: P("What differs"), copy_from: P("Label of the version to copy, e.g. A") }, ["project", "label"]),
+    inputSchema: schema({
+      project: P("Project code, id or name"), label: P("Label, e.g. B"), description: P("What differs"), copy_from: P("Label of the version to copy, e.g. A"),
+      model_tool: P("Where the design lives", "string", { enum: ["archicad", "revit", "sketchup", "other_bim", "drawings", "ai", "none"] }), model_option: P("Design option, file or drawing set name"),
+    }, ["project", "label"]),
     run: async (a, ctx) => {
       const p = await project(ctx.db, str(a, "project", true));
       const { db, changeId } = ctx.change();
-      const v = check(await db.from("versions").insert({ organization_id: ctx.studio.id, project_id: p.id, label: str(a, "label", true), description: str(a, "description") ?? null }).select("id, label").single());
+      const v = check(await db.from("versions").insert({
+        organization_id: ctx.studio.id, project_id: p.id, label: str(a, "label", true), description: str(a, "description") ?? null,
+        model_tool: str(a, "model_tool") ?? null, model_option: str(a, "model_option") ?? null,
+      }).select("id, label").single());
       const from = str(a, "copy_from");
       let copied = 0;
       if (from) {
         const src = await version(ctx.db, { project: p.id, version: from });
-        const lines = check(await ctx.db.from("line_items").select("partida_id, quantity, unit_price, price_id, confidence, state, archicad_element_ids, notes").eq("version_id", src.id));
+        const lines = check(await ctx.db.from("line_items").select("partida_id, quantity, unit_price, price_id, confidence, state, archicad_element_ids, notes, room, source, source_ref, template_id, overridden").eq("version_id", src.id));
         if (lines.length) check(await db.from("line_items").insert(lines.map((l) => ({ ...l, organization_id: ctx.studio.id, version_id: v.id }))));
         copied = lines.length;
       }
@@ -504,18 +512,34 @@ const WRITE: ToolDef[] = [
   {
     name: "add_room",
     title: "Add a room",
-    description: "Add a room from a template (list_room_templates): its standard lines with quantities scaled to the size, each tagged with the room name (label, or the template name).",
+    description: "Add a room from a template (list_room_templates): its standard lines with quantities scaled to the size, each tagged with the room name. Omit template to pick it from the room name or zone category (match_terms). Works the same whether rooms come from Archicad zones, another BIM tool, a drawing, or your own assumptions: set source and source_ref (e.g. the zone id) so later syncs can find the lines.",
     writes: true,
-    inputSchema: schema({ version_id: P("Version id"), project: P("Project (uses its main version)"), version: P("Version label"), template: P("Template code or id"), size: P("Room size in m²", "number"), label: P("Name for the room, e.g. 'Baño principal'") }, ["template", "size"]),
+    inputSchema: schema({
+      version_id: P("Version id"), project: P("Project (uses its main version)"), version: P("Version label"), template: P("Template code or id; omit to match by label/category"),
+      size: P("Room size in the template's unit (m² of floor, or number of windows)", "number"), label: P("Name for the room, e.g. 'Baño principal'"), category: P("Zone category, if different from the name"),
+      source: P(SOURCE_HELP, "string", { enum: LINE_SOURCE }), source_ref: P("Stable id in the source, e.g. the Archicad zone GUID"),
+    }, ["size"]),
     run: async (a, ctx) => {
       const v = await version(ctx.db, a);
-      const ref = str(a, "template", true);
-      const tq = ctx.db.from("room_templates").select("id, name").eq("region_id", ctx.studio.regionId);
-      const t = check(UUID.test(ref) ? await tq.eq("id", ref) : await tq.ilike("code", ref))[0];
-      if (!t) throw new ToolError(`No room template "${ref}".`);
+      const ref = str(a, "template");
+      let t: { id: string; name: string } | undefined;
+      if (ref) {
+        const tq = ctx.db.rpc("effective_room_templates", { p_org: ctx.studio.id }).select("id, name").eq("active", true);
+        t = check(UUID.test(ref) ? await tq.eq("id", ref) : await tq.ilike("code", ref))[0];
+        if (!t) throw new ToolError(`No room template "${ref}".`);
+      } else {
+        const name = str(a, "category") ?? str(a, "label");
+        if (!name) throw new ToolError("Give a template, or a label/category to match one.");
+        const id = check(await ctx.db.rpc("match_room_template", { p_org: ctx.studio.id, p_name: name }));
+        if (!id) throw new ToolError(`No template matches "${name}". Pick one with list_room_templates, or add the term to a template's match_terms.`);
+        t = check(await ctx.db.from("room_templates").select("id, name").eq("id", id).single());
+      }
+      const source = oneOf(a, "source", LINE_SOURCE) ?? "template";
       const { db, changeId } = ctx.change();
-      const n = check(await db.rpc("apply_room_template", { p_version: v.id, p_template: t.id, p_size: num(a, "size", true), p_label: str(a, "label") }));
-      return done(changeId, { version: v.label, template: t.name, lines_added: n });
+      const n = check(await db.rpc("apply_room_template", {
+        p_version: v.id, p_template: t.id, p_size: num(a, "size", true), p_label: str(a, "label"), p_source: source, p_source_ref: str(a, "source_ref"),
+      }));
+      return done(changeId, { version: v.label, template: t.name, lines_added: n, source });
     },
   },
   {
@@ -523,7 +547,7 @@ const WRITE: ToolDef[] = [
     title: "Add a budget line",
     description: "Add a partida to a version's budget. Without unit_price, the studio's best current price is used.",
     writes: true,
-    inputSchema: schema({ version_id: P("Version id"), project: P("Project (uses its main version)"), version: P("Version label"), partida: P("Partida code, e.g. REV-010"), quantity: P("Quantity in the partida's unit", "number"), unit_price: P("Unit price, if not the catalogue price", "number"), room: P("Room it belongs to, e.g. Cocina"), notes: P("Notes") }, ["partida", "quantity"]),
+    inputSchema: schema({ version_id: P("Version id"), project: P("Project (uses its main version)"), version: P("Version label"), partida: P("Partida code, e.g. REV-010"), quantity: P("Quantity in the partida's unit", "number"), unit_price: P("Unit price, if not the catalogue price", "number"), room: P("Room it belongs to, e.g. Cocina"), notes: P("Notes"), source: P(SOURCE_HELP, "string", { enum: LINE_SOURCE }), source_ref: P("Stable id in the source, e.g. an element GUID or drawing ref") }, ["partida", "quantity"]),
     run: async (a, ctx) => {
       const v = await version(ctx.db, a);
       const pt = await partida(ctx, str(a, "partida", true));
@@ -538,7 +562,8 @@ const WRITE: ToolDef[] = [
       const line = check(await db.from("line_items").insert({
         organization_id: ctx.studio.id, version_id: v.id, partida_id: pt.id, quantity: num(a, "quantity", true), unit_price: unitPrice, price_id: priceId,
         confidence, state: unitPrice != null ? "priced" : "unpriced", room: str(a, "room") ?? null, notes: str(a, "notes") ?? null,
-      }).select("id, quantity, unit_price, total, state").single());
+        source: oneOf(a, "source", LINE_SOURCE) ?? "manual", source_ref: str(a, "source_ref") ?? null,
+      }).select("id, quantity, unit_price, total, state, source").single());
       return done(changeId, { line: { ...line, code: pt.code, description: pt.short_description, unit: pt.unit } });
     },
   },

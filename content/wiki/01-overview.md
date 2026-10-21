@@ -51,7 +51,7 @@ flowchart TB
 | Step | In the platform today | Planned |
 |---|---|---|
 | Lead → bid | Projects, bid status, standard budget, ranges | Lead scoring (go / no-go) |
-| Scan and model | Tracked | Polycam/RoomPlan → Tapir → Archicad quantities |
+| Scan and model | Rooms from any source matched to templates; line sources; version comparison | Model sync with preview (Archicad via Tapir), design options both ways |
 | Offer | Budget range, Excel export | Offer document (PDF, payment schedule) |
 | Contract | **Sign contract**: locked baseline | — |
 | Design | Client requests, **change orders**, versions for options | Design stages and deliverables, client selections (finishes), approvals |
@@ -63,6 +63,7 @@ flowchart TB
 - **[Dashboard](/wiki/dashboard)**: what needs doing today and how the pipeline and active jobs are going.
 - **[Projects and the lifecycle](/wiki/project-lifecycle)**: phases, statuses, the bid rule.
 - **[Budgets](/wiki/budgets)**: versions made of lines, rooms and templates.
+- **[Rooms, templates and models](/wiki/rooms-and-models)**: from rooms (any source) to lines, and comparing versions.
 - **[Contract and change orders](/wiki/contract-and-change-orders)**: the baseline, and every change after it.
 - **[Catalogue](/wiki/catalogue)**: the partidas and your prices.
 - **[Purchases](/wiki/purchases)**: what you order, receive and pay.
@@ -71,8 +72,9 @@ flowchart TB
 
 ## Principles
 
-1. **One standard option in the bid; options after the contract.** Speed in the bid, the client's project after signing.
-2. **The contract is the baseline.** It never changes. Changes are explicit, priced and approved.
-3. **Prices are evidence, not guesses.** Every price has a source, a date and a confidence, and confidence sets the range you quote.
-4. **Everything is undoable.** Every change is logged with who made it and can be reverted.
-5. **Your data is yours.** Each studio only sees its own projects, prices and suppliers. The standard catalogue is shared, your prices never are.
+1. **One standard option in the bid; options after the contract.** Speed in the bid, the client's project after signing. A studio setting allows exceptions.
+2. **Any source, one budget.** Rooms and quantities can come from Archicad, other software, drawings, AI assumptions or by hand. Every line remembers where it came from, and your edits win over syncs.
+3. **The contract is the baseline.** It never changes. Changes are explicit, priced and approved.
+4. **Prices are evidence, not guesses.** Every price has a source, a date and a confidence, and confidence sets the range you quote.
+5. **Everything is undoable.** Every change is logged with who made it and can be reverted.
+6. **Your data is yours.** Each studio only sees its own projects, prices and suppliers. The standard catalogue is shared, your prices never are.

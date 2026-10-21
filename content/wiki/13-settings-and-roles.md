@@ -7,7 +7,7 @@
 | Tab | What's there |
 |---|---|
 | **Profile** | Your name, language, password (optional, for signing in without email) |
-| **Studio** | Name, currency, language of offers, default contingency (7%) and VAT (10%) |
+| **Studio** | Name, currency, language of offers, default contingency (7%) and VAT (10%), and whether options are allowed during the bid (off by default) |
 | **Team** | Members and their roles, invitations by link |
 | **AI access** | Assistant address, who may connect, who may let it change things, your connected apps, recent AI changes |
 | **Activity** | Every change in the studio, with undo |

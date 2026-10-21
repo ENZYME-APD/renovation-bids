@@ -21,6 +21,12 @@ export type Line = {
   chapter: string;
   suggested: number | null;
   updatedAt: string;
+  source: string;
+  overridden: boolean;
+};
+
+const SOURCE: Record<string, string> = {
+  template: "from template", model_zone: "from model zone", model_element: "from model", ai_assumption: "AI assumption", import: "imported",
 };
 export type Group = { key: string; name: string; lines: Line[] };
 
@@ -172,6 +178,14 @@ export function LineTable({
                       )}
                       <td className="px-2 py-2">
                         <span className="font-mono text-xs text-accent">{l.code}</span>
+                        {l.source !== "manual" && (
+                          <span
+                            className="ml-2 text-[0.65rem] text-muted"
+                            title={l.overridden ? "Edited by hand: model or template syncs leave this line alone" : "Generated: a re-sync can update its quantity"}
+                          >
+                            {SOURCE[l.source] ?? l.source}{l.overridden ? " · edited" : ""}
+                          </span>
+                        )}
                         <div className="text-[0.95rem] font-medium leading-snug">{l.description}</div>
                         {context && <div className="text-xs text-muted">{context}</div>}
                         {auditOnly && (

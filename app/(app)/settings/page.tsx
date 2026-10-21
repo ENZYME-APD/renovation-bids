@@ -61,6 +61,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
             language={studio.language}
             contingency={studio.contingencyPct}
             vat={studio.vatPct}
+            allowBidOptions={studio.allowBidOptions}
             disabled={!studio.isAdmin}
           />
         </section>

@@ -14,7 +14,7 @@ erDiagram
   PARTIDA ||--o{ PRICE : "has history"
 ```
 
-- A **version** (A, B…) is one complete budget. Before the contract there is only A (see [the project lifecycle](/wiki/project-lifecycle)). When the contract is signed, a locked **Contract** version is added: the baseline (see [Contract and change orders](/wiki/contract-and-change-orders)).
+- A **version** (A, B…) is one complete budget. Before the contract there is only A, unless the studio allows options in the bid (see [the project lifecycle](/wiki/project-lifecycle)). The project page compares versions side by side. When the contract is signed, a locked **Contract** version is added: the baseline (see [Contract and change orders](/wiki/contract-and-change-orders)).
 - A **line** is one partida with a quantity, a unit price, a confidence, a state and optionally a **room**.
 - **Line total = quantity × unit price.** The budget range comes from each line's confidence (see [Pricing and ranges](/wiki/pricing-and-ranges)).
 
@@ -35,9 +35,11 @@ A **room template** is a recipe: for each partida, **quantity = factor × size +
 
 The factor 3.7 comes from Ortega y Gasset 47: 38.9 m² of tiling for 10.5 m² of wet-room floor. Factors are where your experience lives. Refine them as you measure more jobs.
 
-There are ten templates: whole-flat general items, bedroom, living room, hall, full bathroom, toilet, kitchen, laundry, window replacement (per window) and stripping out an existing bathroom or kitchen.
+There are ten standard templates: whole-flat general items, bedroom, living room, hall, full bathroom, toilet, kitchen, laundry, window replacement (per window) and stripping out an existing bathroom or kitchen. Adapt them, or add your own, in **Catalogue → Room templates** (see [Rooms, templates and models](/wiki/rooms-and-models)).
 
 Lines added by a template are tagged with the room name (*Baño principal*). Add the same template twice with different names for two bathrooms.
+
+Each line also shows where it came from (*from template*, *from model zone*, *AI assumption*…), and **edited** once you change its quantity by hand: model syncs leave edited lines alone.
 
 ## Reading a budget: by chapter or by room
 

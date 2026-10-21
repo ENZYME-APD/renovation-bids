@@ -54,6 +54,12 @@ The assistant acts **as you**: it sees exactly what you see and can change exact
 > *"In PRJ-0001 multiply all tiling quantities by 1.1 for waste."*
 > Finds the REV and PAV lines, lists them, and after your OK updates them in one change.
 
+> *"Read the zones from the open Archicad model and add them as rooms to PRJ-0003 version A."*
+> Lists the zones (name, category, area), the template each matches and the ones that don't, then after your OK adds them as *model zone* lines keyed by zone id.
+
+> *"No model yet: from these photos and the floor plan sketch, estimate the rooms of this 85 m² flat and add them."*
+> Adds the rooms as *AI assumption*, so they read as estimates until measured.
+
 > *"Which partidas in the catalogue still have no price?"*
 
 > *"On PRJ-0001, Ana wants a bathtub instead of the shower. Price it as a change order: take out the shower tray and add a 170 cm acrylic bathtub at 780 €."*

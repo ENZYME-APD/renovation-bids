@@ -29,7 +29,7 @@ export function ProfileForm({ displayName, language, email }: { displayName: str
 }
 
 export function StudioForm(p: {
-  name: string; currency: string; language: string; contingency: number; vat: number; disabled: boolean;
+  name: string; currency: string; language: string; contingency: number; vat: number; allowBidOptions: boolean; disabled: boolean;
 }) {
   return (
     <ActionForm action={saveStudio} submit="Save studio" className="grid max-w-md gap-4" disabled={p.disabled}>
@@ -62,6 +62,16 @@ export function StudioForm(p: {
           </label>
         </div>
         <p className="text-sm text-muted">Defaults apply to new versions. Reformas de vivienda usually take 10% VAT; commercial premises 21%.</p>
+        <label className="flex items-start gap-3 rounded-lg border border-line p-3">
+          <input type="checkbox" name="allow_bid_options" defaultChecked={p.allowBidOptions} className="mt-1" />
+          <span>
+            <span className="block text-sm font-medium">Allow options during the bid</span>
+            <span className="block text-sm text-muted">
+              Off (recommended): a bid has one standard version until it is won. On: versions B, C… can be added before the contract, for
+              the projects where reality asks for it.
+            </span>
+          </span>
+        </label>
       </fieldset>
     </ActionForm>
   );
