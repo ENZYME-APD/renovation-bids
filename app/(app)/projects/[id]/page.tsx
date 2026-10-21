@@ -8,6 +8,9 @@ import { Constants } from "@/lib/database.types";
 import { updateProjectStatus } from "../actions";
 import { NewVersionForm } from "./new-version-form";
 import { ClientRequests, NewChangeOrderButton, PhaseStepper, SignContractButton } from "./lifecycle";
+import { VersionCompare, type CompareLine } from "./version-compare";
+import { modelToolLabel } from "@/lib/model-tools";
+import { unitLabel } from "@/lib/format";
 
 export default async function ProjectPage({ params }: PageProps<"/projects/[id]">) {
   const { id } = await params;
@@ -23,7 +26,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
 
   const { data: versions, error } = await supabase
     .from("versions")
-    .select("id, label, description, status, locked, created_at")
+    .select("id, label, description, status, locked, created_at, model_tool, model_option")
     .eq("project_id", id)
     .order("created_at", { ascending: true });
   if (error) throw error;
@@ -48,6 +51,32 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
     supabase.from("decisions").select("id, request, requested_by, source, status, decided_on").eq("project_id", id).order("decided_on", { ascending: false }),
     supabase.from("change_orders").select("id, number, title, reason, status, sent_on, decided_on, decision_id").eq("project_id", id).order("number"),
   ]);
+  const { data: allLines } = versions.length
+    ? await supabase
+        .from("line_items")
+        .select("version_id, quantity, total, room, partidas(code, short_description, unit, trades(id, code, name, sequence))")
+        .in("version_id", versions.map((v) => v.id))
+        .limit(20000)
+    : { data: [] };
+  const compareLines: CompareLine[] = (allLines ?? []).map((l) => {
+    const t = l.partidas?.trades;
+    return {
+      v: l.version_id,
+      chapterKey: t?.id ?? "none",
+      chapter: t ? (t.code ? `${t.code} · ${t.name}` : t.name) : "Other",
+      chapterSeq: t?.sequence ?? 999,
+      room: l.room,
+      code: l.partidas?.code ?? "?",
+      description: l.partidas?.short_description ?? "",
+      unit: unitLabel[l.partidas?.unit ?? ""] ?? "",
+      qty: Number(l.quantity),
+      total: l.total == null ? null : Number(l.total),
+    };
+  });
+  const others = versions.filter((v) => v.id !== project.contract_version_id);
+  const initialCompare = project.contract_version_id && others.length
+    ? [project.contract_version_id, others[others.length - 1].id]
+    : versions.length > 1 ? [versions[0].id, versions[versions.length - 1].id] : versions.map((v) => v.id);
   const coTotals = changeOrders?.length
     ? (await supabase.from("change_order_totals").select("change_order_id, total, lines").in("change_order_id", changeOrders.map((c) => c.id))).data ?? []
     : [];
@@ -135,6 +164,9 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
                   <span className="text-xs text-muted">{v.id === project.contract_version_id ? "🔒 Contract baseline" : humanize(v.status)}</span>
                 </div>
                 <p className="mt-1 min-h-5 text-sm text-muted">{v.description ?? ""}</p>
+                {(v.model_tool || v.model_option) && (
+                  <p className="mt-1 text-xs text-muted">{[modelToolLabel(v.model_tool), v.model_option].filter(Boolean).join(" · ")}</p>
+                )}
                 <p className="mt-4 text-lg tabular-nums">
                   {t.priced ? `${money(t.low)} – ${money(t.high)}` : "Not priced yet"}
                 </p>
@@ -143,16 +175,34 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
             );
           })}
         </div>
-        {studio.canWrite && (project.status === "won" || project.phase !== "bid" || versions.length === 0) ? (
+        {studio.canWrite && (project.status === "won" || project.phase !== "bid" || versions.length === 0 || studio.allowBidOptions) ? (
           <div className="card p-5">
             <NewVersionForm projectId={id} versions={versions.map((v) => ({ id: v.id, label: v.label }))} />
           </div>
         ) : (
           <p className="text-sm text-muted">
-            Bid stage: one standard version, no options or client changes. Alternatives open once the project is marked Won.
+            Bid stage: one standard version, no options or client changes. Alternatives open once the project is marked Won
+            (or allow options in the bid in Settings → Studio).
           </p>
         )}
       </section>
+
+      {versions.length > 0 && (
+        <section id="compare" className="scroll-mt-20 space-y-3">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight">{versions.length > 1 ? "Compare versions" : "Where the money goes"}</h2>
+            <p className="text-sm text-muted">
+              Line totals before VAT, by chapter or by room{versions.length > 1 ? ", with what each option adds or saves" : ""}. Pick up to four versions.
+            </p>
+          </div>
+          <VersionCompare
+            versions={versions.map((v) => ({ id: v.id, label: v.label, note: v.id === project.contract_version_id ? "🔒 contract" : (modelToolLabel(v.model_tool) ?? null) }))}
+            lines={compareLines}
+            initial={initialCompare}
+            currency={cur}
+          />
+        </section>
+      )}
 
       <section id="change-orders" className="scroll-mt-20 space-y-3">
         <div className="flex items-center justify-between">

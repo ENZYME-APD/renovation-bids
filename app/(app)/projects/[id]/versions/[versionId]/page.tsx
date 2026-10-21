@@ -28,7 +28,7 @@ export default async function VersionPage({ params, searchParams }: PageProps<"/
     supabase.rpc("version_budget", { p_version: versionId }),
     supabase
       .from("line_items")
-      .select("id, quantity, unit_price, confidence, state, total, notes, room, updated_at, partidas(id, code, short_description, unit, trades(id, code, name, sequence))")
+      .select("id, quantity, unit_price, confidence, state, total, notes, room, source, overridden, updated_at, partidas(id, code, short_description, unit, trades(id, code, name, sequence))")
       .eq("version_id", versionId)
       .order("created_at", { ascending: true }),
     supabase
@@ -37,7 +37,7 @@ export default async function VersionPage({ params, searchParams }: PageProps<"/
       .order("code"),
     supabase.rpc("current_prices", { p_org: studio.id }),
     supabase
-      .from("room_templates")
+      .rpc("effective_room_templates", { p_org: studio.id })
       .select("id, code, name, size_label, description")
       .eq("active", true)
       .order("sequence"),
@@ -72,6 +72,8 @@ export default async function VersionPage({ params, searchParams }: PageProps<"/
       chapter: t ? (t.code ? `${t.code} · ${t.name}` : t.name) : "Other",
       suggested: l.partidas ? (priceByPartida.get(l.partidas.id) ?? null) : null,
       updatedAt: l.updated_at,
+      source: l.source,
+      overridden: l.overridden,
       sequence: t?.sequence ?? 999,
       chapterKey: t?.id ?? "none",
     };

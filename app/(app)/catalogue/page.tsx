@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { PageIntro } from "@/components/page-intro";
+import { CatalogueTabs } from "@/components/catalogue-tabs";
 import { requireStudio } from "@/lib/dal";
 import { effectiveCatalogue } from "@/lib/catalogue";
 import { CatalogueTable, type Chapter, type Item, type PriceEntry } from "./catalogue-table";
@@ -66,6 +67,7 @@ export default async function CataloguePage() {
           The partidas you price with, by chapter. Edit a standard partida to make your studio&apos;s version, hide the ones you never use,
           and keep prices up to date: their confidence sets the low–high range budgets show.
         </PageIntro>
+        <CatalogueTabs active="partidas" />
       </header>
       <CatalogueTable items={items} chapters={chapters} currency={studio.currency} canWrite={studio.canWrite} spread={spread} />
     </div>

@@ -41,12 +41,14 @@ flowchart LR
 
 Why: bids are unpaid. Options and client wishes multiply the work and make bids hard to compare. A standard spec gives a fast, defensible number, and options are discussed once the client has committed.
 
+Reality sometimes asks otherwise. An owner or admin can switch on **Allow options during the bid** in *Settings → Studio*; it is off by default.
+
 Client wishes during the bid are recorded as **client requests** (*"wants a bathtub instead of a shower"*). They stay *open* and get priced as change orders after signing.
 
 **Example: Calle Santa Hortensia 45 (PRJ-0001), 80 000 € client budget.**
 1. **Lead → qualifying.** Create the project with the client's budget. A budget far below your usual €/m² (dashboard) is a no-go signal.
 2. **Site visit.** Scan with Polycam and take photos.
-3. **Scope.** Rooms from templates (a 7.5 m² *Baño completo con ducha* adds 23 lines), plus single partidas.
+3. **Scope.** Rooms from templates (a 7.5 m² *Baño completo con ducha* adds 23 lines), plus single partidas. Rooms can come from a quick Archicad model, a drawing, or Claude's assumptions: see [Rooms, templates and models](/wiki/rooms-and-models).
 4. **Prices.** Most lines price themselves. **Incomplete only** shows the gaps.
 5. **Offer.** The low–high range is what you quote, before VAT.
 
@@ -54,7 +56,7 @@ Client wishes during the bid are recorded as **client requests** (*"wants a bath
 
 1. **Sign the contract** on the project page: choose the version signed, the agreed value and the date. A locked **Contract** version is created: the baseline. See [Contract and change orders](/wiki/contract-and-change-orders).
 2. Work through the **client requests**: price each as a **change order**, send it, record the client's decision.
-3. Use extra **versions** to explore options (B: bathtub, C: open kitchen) before turning the chosen one into a change order.
+3. Use extra **versions** to explore options (B: bathtub, C: open kitchen), linked to Archicad design options if you use them, and **compare** them on the project page before turning the chosen one into a change order.
 
 ## Phase 3 · Construction
 

@@ -145,6 +145,10 @@ for f in functions:
         out.append("        Returns: {")
         out.append(block([f"{n}: {ts(t)}" for n, t in sorted(outs)], 10))
         out.append("        }[]")
+    elif f["rettype"] in {c["rel"] for c in columns if c["kind"] == "r"}:
+        # setof <table>: rows of that table, embeddable like the table itself
+        out.append(f'        Returns: Database["public"]["Tables"]["{f["rettype"]}"]["Row"]{"[]" if f["setof"] else ""}')
+        out.append(f'        SetofOptions: {{ from: "*"; to: "{f["rettype"]}"; isOneToOne: {"false" if f["setof"] else "true"}; isSetofReturn: {"true" if f["setof"] else "false"} }}')
     else:
         out.append(f'        Returns: {ts(f["rettype"])}{"[]" if f["setof"] else ""}')
     out.append("      }")

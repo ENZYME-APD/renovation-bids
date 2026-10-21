@@ -1,6 +1,6 @@
 "use client";
 
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 // Thin bars with rounded data ends, recessive axes and grid, a tooltip on every mark.
 // Text uses ink tokens; colour only marks identity.
@@ -70,5 +70,33 @@ export function MoneyBars({ data, currency }: { data: { label: string; budget: n
         <Bar dataKey="paid" name="Paid out" fill="var(--series-3)" radius={[4, 4, 0, 0]} maxBarSize={16} />
       </BarChart>
     </ResponsiveContainer>
+  );
+}
+
+/** A donut of shares. Colours come from the caller so the same group keeps its colour across donuts. */
+export function Donut({ data, currency, centre, sub, size = 180 }: {
+  data: { key: string; label: string; value: number; color: string }[];
+  currency: string;
+  centre: string;
+  sub?: string;
+  size?: number;
+}) {
+  const full = fmt(currency, false);
+  const total = data.reduce((s, d) => s + d.value, 0);
+  return (
+    <div className="relative mx-auto" style={{ width: size, height: size }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie data={data} dataKey="value" nameKey="label" innerRadius="68%" outerRadius="100%" paddingAngle={data.length > 1 ? 1 : 0} stroke="var(--surface)" strokeWidth={1} isAnimationActive={false}>
+            {data.map((d) => <Cell key={d.key} fill={d.color} />)}
+          </Pie>
+          <Tooltip {...TIP} formatter={(v, n) => [`${full.format(v as number)} · ${total ? Math.round(((v as number) / total) * 100) : 0} %`, n]} />
+        </PieChart>
+      </ResponsiveContainer>
+      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+        <span className="text-base font-semibold tabular-nums">{centre}</span>
+        {sub && <span className="text-xs text-muted">{sub}</span>}
+      </div>
+    </div>
   );
 }

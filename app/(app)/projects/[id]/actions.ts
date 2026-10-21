@@ -19,6 +19,8 @@ export async function createVersion(projectId: string, _prev: string | null, for
       project_id: projectId,
       label,
       description: String(formData.get("description") ?? "").trim() || null,
+      model_tool: String(formData.get("model_tool") ?? "") || null,
+      model_option: String(formData.get("model_option") ?? "").trim() || null,
     })
     .select("id")
     .single();
@@ -27,7 +29,7 @@ export async function createVersion(projectId: string, _prev: string | null, for
   if (copyFrom) {
     const { data: lines, error: readError } = await supabase
       .from("line_items")
-      .select("partida_id, quantity, unit_price, price_id, confidence, state, archicad_element_ids, notes")
+      .select("partida_id, quantity, unit_price, price_id, confidence, state, archicad_element_ids, notes, room, source, source_ref, template_id, overridden")
       .eq("version_id", copyFrom);
     if (readError) return readError.message;
     if (lines.length) {

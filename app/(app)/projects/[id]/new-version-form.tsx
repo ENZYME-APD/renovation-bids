@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { createVersion } from "./actions";
+import { MODEL_TOOLS } from "@/lib/model-tools";
 
 export function NewVersionForm({ projectId, versions }: { projectId: string; versions: { id: string; label: string }[] }) {
   const [error, action, pending] = useActionState(createVersion.bind(null, projectId), null);
@@ -25,6 +26,22 @@ export function NewVersionForm({ projectId, versions }: { projectId: string; ver
         </select>
       </div>
       <button type="submit" disabled={pending} className="btn">{pending ? "Creating…" : "Add version"}</button>
+      <details className="text-sm sm:col-span-4">
+        <summary className="cursor-pointer text-muted">Where this option lives (optional)</summary>
+        <div className="mt-3 grid gap-4 sm:grid-cols-[12rem_1fr]">
+          <div>
+            <label htmlFor="model_tool" className="label">Source</label>
+            <select id="model_tool" name="model_tool" className="input" defaultValue="">
+              <option value="">Not set</option>
+              {MODEL_TOOLS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="model_option" className="label">Design option / file / drawing set</label>
+            <input id="model_option" name="model_option" className="input" placeholder="Archicad design option “Open kitchen”" />
+          </div>
+        </div>
+      </details>
       {error && <p className="text-sm text-accent sm:col-span-4">{error}</p>}
     </form>
   );

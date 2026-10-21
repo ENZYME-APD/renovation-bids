@@ -14,7 +14,8 @@ const ABOUT =
   "the signed contract freezes a copy of the budget as the baseline; after that, scope changes are change orders " +
   "(current budget = contract + approved change orders). There are also client requests, suppliers and requests for quotes, " +
   "purchase orders, supplier invoices and payments. Call get_overview first. Amounts are in the studio currency it returns, " +
-  "before VAT unless stated. Rule of the studio: until a project is won, the bid has one generic version (no options or client variations).";
+  "before VAT unless stated. Rule of the studio: until a project is won, the bid has one generic version (no options or client variations), unless the studio allows options in the bid. " +
+  "Quantities can come from any source (Archicad or other BIM, drawings, AI assumptions, or by hand): lines record their source, and lines edited by hand are marked overridden so syncs leave them alone.";
 const READ_ONLY = " This connection is read-only.";
 const CAN_WRITE =
   " This connection can also make changes. Before changing anything, tell the user exactly what you will change and wait for them to confirm. " +

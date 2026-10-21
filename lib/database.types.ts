@@ -382,11 +382,15 @@ export type Database = {
           id: string
           notes: string | null
           organization_id: string
+          overridden: boolean
           partida_id: string
           price_id: string | null
           quantity: number
           room: string | null
+          source: Database["public"]["Enums"]["line_source"]
+          source_ref: string | null
           state: Database["public"]["Enums"]["line_state"]
+          template_id: string | null
           total: number | null
           unit_price: number | null
           updated_at: string
@@ -399,11 +403,15 @@ export type Database = {
           id?: string
           notes?: string | null
           organization_id: string
+          overridden?: boolean
           partida_id: string
           price_id?: string | null
           quantity?: number
           room?: string | null
+          source?: Database["public"]["Enums"]["line_source"]
+          source_ref?: string | null
           state?: Database["public"]["Enums"]["line_state"]
+          template_id?: string | null
           total?: never
           unit_price?: number | null
           updated_at?: string
@@ -416,11 +424,15 @@ export type Database = {
           id?: string
           notes?: string | null
           organization_id?: string
+          overridden?: boolean
           partida_id?: string
           price_id?: string | null
           quantity?: number
           room?: string | null
+          source?: Database["public"]["Enums"]["line_source"]
+          source_ref?: string | null
           state?: Database["public"]["Enums"]["line_state"]
+          template_id?: string | null
           total?: never
           unit_price?: number | null
           updated_at?: string
@@ -584,6 +596,7 @@ export type Database = {
         Row: {
           ai_changes: string
           ai_connect: string
+          allow_bid_options: boolean
           created_at: string
           currency: string
           default_contingency_pct: number
@@ -599,6 +612,7 @@ export type Database = {
         Insert: {
           ai_changes?: string
           ai_connect?: string
+          allow_bid_options?: boolean
           created_at?: string
           currency?: string
           default_contingency_pct?: number
@@ -614,6 +628,7 @@ export type Database = {
         Update: {
           ai_changes?: string
           ai_connect?: string
+          allow_bid_options?: boolean
           created_at?: string
           currency?: string
           default_contingency_pct?: number
@@ -1399,6 +1414,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          match_terms: string[]
           name: string
           organization_id: string | null
           region_id: string
@@ -1411,6 +1427,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          match_terms?: string[]
           name: string
           organization_id?: string | null
           region_id: string
@@ -1423,6 +1440,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          match_terms?: string[]
           name?: string
           organization_id?: string | null
           region_id?: string
@@ -1742,6 +1760,10 @@ export type Database = {
           id: string
           label: string
           locked: boolean
+          model_file: string | null
+          model_option: string | null
+          model_synced_at: string | null
+          model_tool: string | null
           organization_id: string
           project_id: string
           status: Database["public"]["Enums"]["version_status"]
@@ -1754,6 +1776,10 @@ export type Database = {
           id?: string
           label: string
           locked?: boolean
+          model_file?: string | null
+          model_option?: string | null
+          model_synced_at?: string | null
+          model_tool?: string | null
           organization_id: string
           project_id: string
           status?: Database["public"]["Enums"]["version_status"]
@@ -1766,6 +1792,10 @@ export type Database = {
           id?: string
           label?: string
           locked?: boolean
+          model_file?: string | null
+          model_option?: string | null
+          model_synced_at?: string | null
+          model_tool?: string | null
           organization_id?: string
           project_id?: string
           status?: Database["public"]["Enums"]["version_status"]
@@ -2007,8 +2037,12 @@ export type Database = {
         Returns: string
       }
       apply_room_template: {
-        Args: { p_label?: string; p_size: number; p_template: string; p_version: string }
+        Args: { p_label?: string; p_size: number; p_source?: Database["public"]["Enums"]["line_source"]; p_source_ref?: string; p_template: string; p_version: string }
         Returns: number
+      }
+      copy_room_template: {
+        Args: { p_code?: string; p_name?: string; p_org: string; p_template: string }
+        Returns: string
       }
       create_organization: {
         Args: { p_name: string; p_region_id: string }
@@ -2028,6 +2062,11 @@ export type Database = {
           valid_until: string
         }[]
       }
+      effective_room_templates: {
+        Args: { p_org: string }
+        Returns: Database["public"]["Tables"]["room_templates"]["Row"][]
+        SetofOptions: { from: "*"; to: "room_templates"; isOneToOne: false; isSetofReturn: true }
+      }
       get_invitation: {
         Args: { p_token: string }
         Returns: {
@@ -2037,6 +2076,10 @@ export type Database = {
           role: Database["public"]["Enums"]["member_role"]
           studio: string
         }[]
+      }
+      match_room_template: {
+        Args: { p_name: string; p_org: string }
+        Returns: string
       }
       record_actual_price: {
         Args: { p_po_line: string }
@@ -2076,6 +2119,7 @@ export type Database = {
       contact_source: "own" | "web" | "referral"
       decision_source: "email" | "meeting" | "call" | "site" | "other"
       decision_status: "open" | "applied" | "dropped"
+      line_source: "manual" | "template" | "model_zone" | "model_element" | "ai_assumption" | "import"
       line_state: "unpriced" | "priced" | "needs_rfq" | "quoted"
       member_role: "owner" | "admin" | "member" | "viewer"
       money_category: "labour" | "materials" | "extra" | "client_works" | "client_fees"
@@ -2224,6 +2268,7 @@ export const Constants = {
       contact_source: ["own", "web", "referral"],
       decision_source: ["email", "meeting", "call", "site", "other"],
       decision_status: ["open", "applied", "dropped"],
+      line_source: ["manual", "template", "model_zone", "model_element", "ai_assumption", "import"],
       line_state: ["unpriced", "priced", "needs_rfq", "quoted"],
       member_role: ["owner", "admin", "member", "viewer"],
       money_category: ["labour", "materials", "extra", "client_works", "client_fees"],
