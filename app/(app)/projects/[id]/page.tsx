@@ -1,18 +1,15 @@
 import Link from "next/link";
-import { PageIntro } from "@/components/page-intro";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireStudio } from "@/lib/dal";
 import { humanize, money } from "@/lib/format";
-import { Constants } from "@/lib/database.types";
-import { setProjectRoomHeight, updateProjectStatus } from "../actions";
 import { NewVersionButton } from "./new-version-form";
-import { ProjectCode } from "./project-code";
-import { ClientRequests, NewChangeOrderButton, PhaseStepper, SignContractButton } from "./lifecycle";
+import { ClientRequests, NewChangeOrderButton, SignContractButton } from "./lifecycle";
 import { VersionCompare, type CompareLine } from "./version-compare";
 import { DeleteProject } from "./delete-project";
 import { modelToolLabel } from "@/lib/model-tools";
 import { unitLabel } from "@/lib/format";
+import { ProjectHeader } from "./project-header";
 
 export default async function ProjectPage({ params }: PageProps<"/projects/[id]">) {
   const { id } = await params;
@@ -98,63 +95,12 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
 
   return (
     <div className="space-y-10">
-      <div>
-        <Link href="/projects" className="text-sm text-muted hover:text-ink">← Projects</Link>
-        <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <ProjectCode id={project.id} code={project.code} canWrite={studio.canWrite} />
-            <h1 className="text-2xl font-semibold tracking-tight">{project.name}</h1>
-            <PageIntro wiki="project-lifecycle">
-              A project runs through four phases. In the bid, price one standard version; once won, sign the contract to lock the baseline, then
-              record client requests and price them as change orders.
-            </PageIntro>
-          </div>
-          <div className="flex flex-wrap items-end gap-3">
-          <Link href={`/projects/${project.id}/purchases`} className="btn-quiet border-accent bg-accent-soft py-2 font-medium hover:bg-accent hover:text-accent-ink">
-            Purchases &amp; cost control →
-          </Link>
-          <form action={updateProjectStatus} className="flex items-end gap-2">
-            <input type="hidden" name="id" value={project.id} />
-            <div>
-              <label htmlFor="status" className="label">Bid status</label>
-              <select id="status" name="status" defaultValue={project.status} className="input">
-                {Constants.public.Enums.project_status.map((s) => (
-                  <option key={s} value={s}>{humanize(s)}</option>
-                ))}
-              </select>
-            </div>
-            <button className="btn-quiet">Save</button>
-          </form>
-          </div>
-        </div>
-        <div className="mt-5">
-          <PhaseStepper projectId={project.id} phase={project.phase} canWrite={studio.canWrite} />
-        </div>
-        <dl className="mt-6 grid grid-cols-2 gap-4 text-sm sm:grid-cols-3 lg:grid-cols-6">
-          {facts.map(([k, v]) => (
-            <div key={k}>
-              <dt className="text-xs text-muted">{k}</dt>
-              <dd className="mt-0.5">{v ?? "—"}</dd>
-            </div>
-          ))}
-          <div>
-            <dt className="text-xs text-muted">Room height</dt>
-            <dd className="mt-0.5">
-              {studio.canWrite ? (
-                <form action={setProjectRoomHeight} className="flex items-center gap-1">
-                  <input type="hidden" name="id" value={project.id} />
-                  <input name="room_height" inputMode="decimal" defaultValue={project.room_height ?? ""} placeholder={`${studio.defaultRoomHeight.toFixed(2)} (studio)`}
-                    className="input w-28 py-0.5 text-sm" aria-label="Room height in metres" />
-                  <span className="text-xs text-muted">m</span>
-                  <button className="btn-quiet px-2 py-0.5 text-xs">Set</button>
-                </form>
-              ) : (
-                `${Number(project.room_height ?? studio.defaultRoomHeight).toFixed(2)} m`
-              )}
-            </dd>
-          </div>
-        </dl>
-      </div>
+      <ProjectHeader
+        project={{ id: project.id, code: project.code, name: project.name, status: project.status, phase: project.phase, room_height: project.room_height }}
+        facts={facts.map(([k, v]) => [k, v == null ? null : String(v)] as [string, string | null])}
+        canWrite={studio.canWrite}
+        defaultRoomHeight={studio.defaultRoomHeight}
+      />
 
       {contractSigned && summary ? (
         <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
