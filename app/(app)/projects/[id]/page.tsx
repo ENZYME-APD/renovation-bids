@@ -6,7 +6,8 @@ import { requireStudio } from "@/lib/dal";
 import { humanize, money } from "@/lib/format";
 import { Constants } from "@/lib/database.types";
 import { setProjectRoomHeight, updateProjectStatus } from "../actions";
-import { NewVersionForm } from "./new-version-form";
+import { NewVersionButton } from "./new-version-form";
+import { ProjectCode } from "./project-code";
 import { ClientRequests, NewChangeOrderButton, PhaseStepper, SignContractButton } from "./lifecycle";
 import { VersionCompare, type CompareLine } from "./version-compare";
 import { DeleteProject } from "./delete-project";
@@ -101,16 +102,17 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
         <Link href="/projects" className="text-sm text-muted hover:text-ink">← Projects</Link>
         <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="font-mono text-xs text-muted">{project.code}</p>
+            <ProjectCode id={project.id} code={project.code} canWrite={studio.canWrite} />
             <h1 className="text-2xl font-semibold tracking-tight">{project.name}</h1>
             <PageIntro wiki="project-lifecycle">
               A project runs through four phases. In the bid, price one standard version; once won, sign the contract to lock the baseline, then
               record client requests and price them as change orders.
             </PageIntro>
-            <Link href={`/projects/${project.id}/purchases`} className="mt-1 inline-block text-sm text-muted hover:text-ink">
-              Purchases and cost control →
-            </Link>
           </div>
+          <div className="flex flex-wrap items-end gap-3">
+          <Link href={`/projects/${project.id}/purchases`} className="btn-quiet border-accent bg-accent-soft py-2 font-medium hover:bg-accent hover:text-accent-ink">
+            Purchases &amp; cost control →
+          </Link>
           <form action={updateProjectStatus} className="flex items-end gap-2">
             <input type="hidden" name="id" value={project.id} />
             <div>
@@ -123,6 +125,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
             </div>
             <button className="btn-quiet">Save</button>
           </form>
+          </div>
         </div>
         <div className="mt-5">
           <PhaseStepper projectId={project.id} phase={project.phase} canWrite={studio.canWrite} />
@@ -171,7 +174,16 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
       ) : null}
 
       <section className="space-y-4">
-        <h2 className="text-lg font-semibold tracking-tight">Versions</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold tracking-tight">Versions</h2>
+          {studio.canWrite && (project.status === "won" || project.phase !== "bid" || versions.length === 0 || studio.allowBidOptions) ? (
+            <NewVersionButton projectId={id} versions={versions.map((v) => ({ id: v.id, label: v.label }))} />
+          ) : studio.canWrite ? (
+            <p className="max-w-md text-right text-xs text-muted">
+              Bid stage: one standard version. Alternatives open once the project is Won (or allow options in the bid in Settings → Studio).
+            </p>
+          ) : null}
+        </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {versions.map((v) => {
             const t = totalFor(v.id);
@@ -193,16 +205,6 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
             );
           })}
         </div>
-        {studio.canWrite && (project.status === "won" || project.phase !== "bid" || versions.length === 0 || studio.allowBidOptions) ? (
-          <div className="card p-5">
-            <NewVersionForm projectId={id} versions={versions.map((v) => ({ id: v.id, label: v.label }))} />
-          </div>
-        ) : (
-          <p className="text-sm text-muted">
-            Bid stage: one standard version, no options or client changes. Alternatives open once the project is marked Won
-            (or allow options in the bid in Settings → Studio).
-          </p>
-        )}
       </section>
 
       {versions.length > 0 && (
