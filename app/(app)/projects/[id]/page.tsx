@@ -6,7 +6,6 @@ import { humanize, money } from "@/lib/format";
 import { NewVersionButton } from "./new-version-form";
 import { ClientRequests, NewChangeOrderButton, SignContractButton } from "./lifecycle";
 import { VersionCompare, type CompareLine } from "./version-compare";
-import { DeleteProject } from "./delete-project";
 import { modelToolLabel } from "@/lib/model-tools";
 import { unitLabel } from "@/lib/format";
 import { ProjectHeader } from "./project-header";
@@ -109,6 +108,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
         project={{ id: project.id, code: project.code, name: project.name, status: project.status, phase: project.phase, room_height: project.room_height }}
         facts={facts.map(([k, v]) => [k, v == null ? null : String(v)] as [string, string | null])}
         canWrite={studio.canWrite}
+        canDelete={studio.isAdmin}
         defaultRoomHeight={studio.defaultRoomHeight}
         editable={{
           id: project.id, code: project.code, name: project.name, client: project.clients?.name ?? null, district: project.district,
@@ -244,12 +244,6 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
           return { ...r, changeOrder: co ? { id: co.id, number: co.number } : null };
         })}
       />
-      {studio.isAdmin && (
-        <section className="flex items-center justify-between border-t border-line pt-6 text-sm">
-          <p className="text-muted">Owners and admins can delete a project; it can be undone from Settings → Activity.</p>
-          <DeleteProject id={project.id} code={project.code} name={project.name} />
-        </section>
-      )}
     </div>
   );
 }
