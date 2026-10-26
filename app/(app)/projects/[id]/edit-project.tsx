@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { Modal } from "@/components/modal";
 import { updateProjectDetails } from "../actions";
+import { DeleteProjectForm } from "./delete-project";
 
 export type EditableProject = {
   id: string; code: string; name: string; client: string | null; district: string | null; address: string | null;
@@ -10,19 +11,25 @@ export type EditableProject = {
 };
 
 /** "Edit details" button: every project field in one dialog. */
-export function EditProjectButton({ project, defaultRoomHeight }: { project: EditableProject; defaultRoomHeight: number }) {
+export function EditProjectButton({ project, defaultRoomHeight, canDelete }: { project: EditableProject; defaultRoomHeight: number; canDelete: boolean }) {
   const [open, setOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const close = () => { setOpen(false); setDeleting(false); };
   return (
     <>
       <button type="button" className="btn-quiet px-2.5 py-1 text-xs" onClick={() => setOpen(true)}>Edit details</button>
-      <Modal open={open} onClose={() => setOpen(false)} title="Project details" wide>
-        {open && <EditForm project={project} defaultRoomHeight={defaultRoomHeight} onDone={() => setOpen(false)} />}
+      <Modal open={open} onClose={close} title={deleting ? `Delete ${project.code}?` : "Project details"} wide={!deleting}>
+        {open && (deleting
+          ? <DeleteProjectForm id={project.id} code={project.code} name={project.name} onCancel={() => setDeleting(false)} />
+          : <EditForm project={project} defaultRoomHeight={defaultRoomHeight} onDone={close} onDelete={canDelete ? () => setDeleting(true) : undefined} />)}
       </Modal>
     </>
   );
 }
 
-function EditForm({ project: p, defaultRoomHeight, onDone }: { project: EditableProject; defaultRoomHeight: number; onDone: () => void }) {
+function EditForm({ project: p, defaultRoomHeight, onDone, onDelete }: {
+  project: EditableProject; defaultRoomHeight: number; onDone: () => void; onDelete?: () => void;
+}) {
   const [error, action, pending] = useActionState(updateProjectDetails, null);
   const sent = useRef(false);
   useEffect(() => {
@@ -73,7 +80,10 @@ function EditForm({ project: p, defaultRoomHeight, onDone }: { project: Editable
         </div>
       </div>
       {error && <p className="text-sm text-accent sm:col-span-2">{error}</p>}
-      <div className="flex justify-end gap-2 sm:col-span-2">
+      <div className="flex items-center justify-end gap-2 sm:col-span-2">
+        {onDelete && (
+          <button type="button" className="mr-auto text-sm text-muted hover:text-accent" onClick={onDelete}>Delete project…</button>
+        )}
         <button type="button" className="btn-quiet" onClick={onDone}>Cancel</button>
         <button type="submit" disabled={pending} className="btn">{pending ? "Saving…" : "Save details"}</button>
       </div>

@@ -10,8 +10,8 @@ import { EditProjectButton, type EditableProject } from "./edit-project";
 type P = { id: string; code: string; name: string; status: string; phase: string; room_height: number | null };
 
 /** Project header: what the project is on the left; phase, status and the way into purchasing on the right. */
-export function ProjectHeader({ project, facts, canWrite, defaultRoomHeight, editable }: {
-  project: P; facts: [string, string | null][]; canWrite: boolean; defaultRoomHeight: number; editable: EditableProject;
+export function ProjectHeader({ project, facts, canWrite, canDelete, defaultRoomHeight, editable }: {
+  project: P; facts: [string, string | null][]; canWrite: boolean; canDelete: boolean; defaultRoomHeight: number; editable: EditableProject;
 }) {
   return (
       <div className="space-y-3">
@@ -25,7 +25,7 @@ export function ProjectHeader({ project, facts, canWrite, defaultRoomHeight, edi
                 <span className="inline-block size-2 rounded-full" style={{ background: STATUS_COLOR[project.status] }} />
                 {humanize(project.status)}
               </span>
-              {canWrite && <span className="ml-auto"><EditProjectButton project={editable} defaultRoomHeight={defaultRoomHeight} /></span>}
+              {canWrite && <span className="ml-auto"><EditProjectButton project={editable} defaultRoomHeight={defaultRoomHeight} canDelete={canDelete} /></span>}
             </div>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight">{project.name}</h1>
             <PageIntro wiki="project-lifecycle">
