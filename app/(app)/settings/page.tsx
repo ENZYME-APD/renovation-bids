@@ -293,7 +293,7 @@ async function DefaultFees({ canWrite, currency }: { canWrite: boolean; currency
     <section className="card space-y-3 p-5">
       <div>
         <h2 className="font-semibold">Default architect&apos;s fees</h2>
-        <p className="text-sm text-muted">Every new project starts with these; change them per project as needed.</p>
+        <p className="text-sm text-muted">Your usual fees. New projects start empty; add these to a project with “Add studio default fees” in its fees section, then adjust.</p>
       </div>
       <FeeEditor fees={(data ?? []) as Fee[]} projectId={null} canWrite={canWrite} currency={currency} />
     </section>
