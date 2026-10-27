@@ -44,7 +44,7 @@ export function FeeEditor({ fees, projectId, canWrite, currency, hasDefaults }: 
     <div className="space-y-3">
       {fees.length === 0 ? (
         <p className="text-sm text-muted">
-          {isProject ? "No fees yet." : "No default fees. Add the ones every project starts with, e.g. a fixed project fee and monthly site supervision."}
+          {isProject ? "No fees yet." : "No default fees. Add your usual ones, e.g. a fixed project fee and monthly site supervision."}
         </p>
       ) : (
         <div className="overflow-x-auto">

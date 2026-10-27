@@ -1,4 +1,4 @@
--- Architect's fees: studio defaults copied into new projects; lump sum, % and monthly amounts; undo.
+-- Architect's fees: studio defaults added on demand (not automatically); lump sum, % and monthly amounts; undo.
 \set QUIET on
 \pset tuples_only on
 
@@ -19,10 +19,11 @@ values (current_setting('test.org_a')::uuid, 'Proyecto', 'lump_sum', 4000, 'desi
 insert into public.fee_items (organization_id, label, basis, amount, phase, sequence)
 values (current_setting('test.org_a')::uuid, 'Dirección de obra', 'monthly', 2000, 'construction', 2);
 
--- A new project gets them
+-- A new project starts with no fees; the defaults are added on demand
 with x as (insert into public.projects (organization_id, name) values (current_setting('test.org_a')::uuid, 'Fees test') returning id)
 select set_config('test.fee_project', id::text, false) from x;
-select pg_temp.check((select count(*) = 2 from public.fee_items where project_id = current_setting('test.fee_project')::uuid), 'new project copies the 2 default fees');
+select pg_temp.check((select count(*) = 0 from public.fee_items where project_id = current_setting('test.fee_project')::uuid), 'new project starts with no fees');
+select pg_temp.check((select public.apply_default_fees(current_setting('test.fee_project')::uuid) = 2), 'apply defaults adds the 2 default fees');
 select pg_temp.check((select fees_total = 4000 and items_missing_months = 1 from public.project_fee_summary where project_id = current_setting('test.fee_project')::uuid),
                      'monthly fee without months counts 0 and is flagged');
 
